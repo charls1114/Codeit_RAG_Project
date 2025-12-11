@@ -1,0 +1,20 @@
+chunking:
+  chunk_size: 1000
+  chunk_overlap: 150
+
+retrieval:
+  k: 5
+
+vectorstore:
+  persist_dir: "./data/chroma_db"
+  collection_name: "rfp_rag"
+
+document:
+  allowed_extensions:
+    - ".pdf"
+    - ".hwp"
+  loader_backend: "pymupdf_teddynote"
+
+langsmith:
+  enabled: true
+  project: "rfp-rag-project"
