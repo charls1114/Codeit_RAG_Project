@@ -12,7 +12,7 @@ def create_chroma_from_documents(
     collection_name: str = "rfp_rag",
 ) -> Chroma:
     cfg = get_app_config()
-    persist_dir = Path(cfg.chroma_persist_dir)
+    persist_dir = Path(cfg.vectorstore.persist_dir)
     persist_dir.mkdir(parents=True, exist_ok=True)
 
     vectordb = Chroma.from_documents(
@@ -33,5 +33,5 @@ def load_chroma(
     return Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,
-        persist_directory=cfg.chroma_persist_dir,
+        persist_directory=cfg.vectorstore.persist_dir,
     )

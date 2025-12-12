@@ -18,3 +18,5 @@ __pycache__
 test/*
 log/*
 tmp/*
+data/raw/*
+data/chroma_db/*
