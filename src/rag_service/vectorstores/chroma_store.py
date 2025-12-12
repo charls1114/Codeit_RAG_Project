@@ -1,4 +1,4 @@
-from langchain_community.vectorstores import Chroma
+from langchain_chroma.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 from ..config import get_app_config
 from pathlib import Path
@@ -12,7 +12,7 @@ def create_chroma_from_documents(
     collection_name: str = "rfp_rag",
 ) -> Chroma:
     cfg = get_app_config()
-    persist_dir = Path(cfg.chroma_persist_dir)
+    persist_dir = Path(cfg.vectorstore.persist_dir)
     persist_dir.mkdir(parents=True, exist_ok=True)
 
     vectordb = Chroma.from_documents(
@@ -21,7 +21,6 @@ def create_chroma_from_documents(
         collection_name=collection_name,
         persist_directory=str(persist_dir),
     )
-    vectordb.persist()
     return vectordb
 
 
@@ -33,5 +32,5 @@ def load_chroma(
     return Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,
-        persist_directory=cfg.chroma_persist_dir,
+        persist_directory=cfg.vectorstore.persist_dir,
     )

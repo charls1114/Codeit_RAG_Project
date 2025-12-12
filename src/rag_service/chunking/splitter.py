@@ -1,6 +1,7 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from typing import List
+from ..config import get_app_config
 
 
 def get_text_splitter(
@@ -15,5 +16,6 @@ def get_text_splitter(
 
 
 def split_documents(docs: List[Document]) -> List[Document]:
-    splitter = get_text_splitter()
+    cfg = get_app_config()
+    splitter = get_text_splitter(cfg.chunking.chunk_size, cfg.chunking.chunk_overlap)
     return splitter.split_documents(docs)
