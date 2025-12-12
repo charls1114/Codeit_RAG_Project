@@ -26,7 +26,8 @@ def build_rag_chain(k: int = 5):
 
     rag_chain = (
         {
-            "context": retriever | (lambda docs: "\n\n".join(d.page_content for d in docs)),
+            "context": retriever
+            | (lambda docs: "\n\n".join(d.page_content for d in docs)),
             "question": RunnablePassthrough(),
         }
         | prompt

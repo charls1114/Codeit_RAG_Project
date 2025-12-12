@@ -1,5 +1,5 @@
 from .base import BaseRFPDocumentLoader
-from .pymupdf_teddynote_loader import PyMuPDFTeddynoteRFPDocumentLoader
+from .pymupdf_hwp_loader import PyMuPDFHwpRFPDocumentLoader
 from .llamaindex_loader import LlamaIndexRFPDocumentLoader
 from ..config import get_app_config
 
@@ -9,7 +9,7 @@ def get_document_loader() -> BaseRFPDocumentLoader:
     backend = cfg.document.loader_backend.lower()
     print(f"DOC_LOADER_BACKEND: {backend}")
     if backend == "pymupdf_teddynote":
-        return PyMuPDFTeddynoteRFPDocumentLoader()
+        return PyMuPDFHwpRFPDocumentLoader()
     elif backend == "llamaindex_file":
         return LlamaIndexRFPDocumentLoader()
     else:

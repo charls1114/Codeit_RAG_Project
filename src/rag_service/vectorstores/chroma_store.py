@@ -1,4 +1,4 @@
-from langchain_community.vectorstores import Chroma
+from langchain_chroma.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 from ..config import get_app_config
 from pathlib import Path
@@ -21,7 +21,6 @@ def create_chroma_from_documents(
         collection_name=collection_name,
         persist_directory=str(persist_dir),
     )
-    vectordb.persist()
     return vectordb
 
 

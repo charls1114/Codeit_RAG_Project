@@ -4,23 +4,19 @@ from typing import List
 from langchain_core.documents import Document
 from .base import BaseRFPDocumentLoader
 
-# 예시용: 실제 사용 시 공식 문서 보고 import 수정
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_teddynote.document_loaders import HWPLoader  # 예: 실제 패키지 이름 확인 필요
 from helper_hwp import hwp_to_txt
 
 
-class PyMuPDFTeddynoteRFPDocumentLoader(BaseRFPDocumentLoader):
+class PyMuPDFHwpRFPDocumentLoader(BaseRFPDocumentLoader):
     def load(self, path: str | Path) -> List[Document]:
         path = Path(path)
         if path.suffix.lower() == ".pdf":
             loader = PyMuPDFLoader(str(path))
             docs = loader.load()
         elif path.suffix.lower() == ".hwp":
-            loader = HWPLoader(str(path))
-            docs = loader.load()
-            # txts = hwp_to_txt(str(path))
-            # docs = [Document(page_content=txt) for txt in txts]
+            txts = hwp_to_txt(str(path))
+            docs = [Document(page_content=txts)]
         else:
             raise ValueError(f"지원하지 않는 확장자: {path.suffix}")
 
