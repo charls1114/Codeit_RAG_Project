@@ -1,0 +1,25 @@
+{
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "files.eol": "\n",
+    "editor.rulers": [100],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // VSCode Format On Save
+    "editor.formatOnSave": true,
+
+    // Black을 VSCode 기본 포매터로 지정
+    "editor.defaultFormatter": "ms-python.black-formatter",
+
+    // Python 확장도 Black 사용
+    "python.formatting.provider": "black",
+
+    // Black에 line-length 120 전달
+    "black-formatter.args": ["--line-length", "100"],
+
+    "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  }
+}
