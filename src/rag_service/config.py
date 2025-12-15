@@ -20,6 +20,7 @@ if ENV_PATH.exists():
 
 # ---------- 유틸 함수들 ----------
 
+
 def deep_update(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
     """
     dict를 재귀적으로 병합하는 함수.
@@ -27,11 +28,7 @@ def deep_update(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
     """
     result = dict(base)
     for k, v in update.items():
-        if (
-            k in result
-            and isinstance(result[k], dict)
-            and isinstance(v, dict)
-        ):
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
             result[k] = deep_update(result[k], v)
         else:
             result[k] = v
@@ -46,6 +43,7 @@ def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
 
 
 # ---------- Pydantic 설정 모델들 ----------
+
 
 class ChunkingConfig(BaseModel):
     chunk_size: int = 1000
@@ -63,7 +61,7 @@ class VectorStoreConfig(BaseModel):
 
 class DocumentConfig(BaseModel):
     allowed_extensions: List[str] = Field(default_factory=lambda: [".pdf", ".hwp"])
-    loader_backend: str = "pymupdf_teddynote"  # 또는 "llamaindex_file"
+    loader_backend: str = "pymupdf_hwp"  # pymupdf_hwp 또는 "llamaindex_file"
 
 
 class LLMConfig(BaseModel):
@@ -71,12 +69,10 @@ class LLMConfig(BaseModel):
     model_name: str
     temperature: float = 0.0
     max_new_tokens: int = 512
+    api_key: Optional[str] = None
 
     # HF 전용
     device: Optional[str] = None  # "cuda" / "cpu" 등
-
-    # OpenAI 전용
-    api_key: Optional[str] = None
 
 
 class EmbeddingsConfig(BaseModel):
@@ -92,8 +88,8 @@ class LangSmithConfig(BaseModel):
 
 class AppConfig(BaseModel):
     # 어떤 프로파일을 쓸 것인지: local_hf / openai_api
-    profile: str = "openai_api"     # yaml + CONFIG_PROFILE + RAG_MODE로 결정
-    rag_mode: str = "openai_api"    # 코드 가독성을 위해 동일 값 유지
+    profile: str = "openai_api"  # yaml + CONFIG_PROFILE + RAG_MODE로 결정
+    rag_mode: str = "openai_api"  # 코드 가독성을 위해 동일 값 유지
 
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
@@ -107,6 +103,7 @@ class AppConfig(BaseModel):
 
 
 # ---------- YAML + .env 병합 로직 ----------
+
 
 def _load_yaml_config_dict() -> Dict[str, Any]:
     """
@@ -164,6 +161,7 @@ def _apply_env_overrides(config: AppConfig) -> AppConfig:
     # HF 관련
     hf_model = os.getenv("HF_MODEL_NAME")
     hf_emb = os.getenv("HF_EMBEDDING_MODEL")
+    hf_api_key = os.getenv("HF_API_KEY")
     device = os.getenv("DEVICE")
 
     # OpenAI 관련
@@ -179,6 +177,8 @@ def _apply_env_overrides(config: AppConfig) -> AppConfig:
             config.llm.device = device
         if hf_emb:
             config.embeddings.model_name = hf_emb
+        if hf_api_key:
+            config.llm.api_key = hf_api_key
     elif config.rag_mode == "openai_api":
         if openai_model:
             config.llm.model_name = openai_model

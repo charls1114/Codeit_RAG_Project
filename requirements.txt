@@ -41,6 +41,7 @@ distro==1.9.0
 docstring_parser==0.17.0
 docutils==0.22.3
 durationpy==0.10
+einops==0.8.1
 executing==2.2.1
 fastapi==0.124.2
 fastjsonschema==2.21.2
