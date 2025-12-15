@@ -13,7 +13,7 @@ document:
   allowed_extensions:
     - ".pdf"
     - ".hwp"
-  loader_backend: "pymupdf_teddynote"
+  loader_backend: "pymupdf_hwp"
 
 langsmith:
   enabled: true

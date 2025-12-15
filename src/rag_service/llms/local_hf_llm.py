@@ -1,17 +1,22 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline
 from ..config import get_app_config
+from dotenv import load_dotenv
 
 
 def get_local_hf_llm():
+    load_dotenv()  # 루트 .env 로드
     cfg = get_app_config()
     model_name = cfg.llm.model_name
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=cfg.llm.api_key)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         device_map=cfg.llm.device,
-        torch_dtype="auto",
+        dtype="auto",
+        # LGAI-EXAONE
+        token=cfg.llm.api_key,
+        trust_remote_code=True,
     )
     gen_pipeline = pipeline(
         "text-generation",
