@@ -6,6 +6,7 @@ def get_openai_llm():
     cfg = get_app_config()
     return ChatOpenAI(
         model=cfg.llm.model_name,
-        api_key=cfg.llm.api_key,
-        temperature=0.0,
+        api_key=cfg.model_api_key,
+        temperature=cfg.llm.temperature,
+        max_tokens=cfg.llm.max_new_tokens,
     )

@@ -21,20 +21,6 @@ if ENV_PATH.exists():
 # ---------- 유틸 함수들 ----------
 
 
-def deep_update(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    dict를 재귀적으로 병합하는 함수.
-    base에 update를 덮어쓴 결과를 반환.
-    """
-    result = dict(base)
-    for k, v in update.items():
-        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-            result[k] = deep_update(result[k], v)
-        else:
-            result[k] = v
-    return result
-
-
 def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
@@ -66,18 +52,13 @@ class DocumentConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     # 공통
-    model_name: str
+    model_name: str = None
     temperature: float = 0.0
     max_new_tokens: int = 512
-    api_key: Optional[str] = None
-
-    # HF 전용
-    device: Optional[str] = None  # "cuda" / "cpu" 등
 
 
 class EmbeddingsConfig(BaseModel):
-    model_name: str
-    api_key: Optional[str] = None  # OpenAI 임베딩용
+    model_name: str = None
 
 
 class LangSmithConfig(BaseModel):
@@ -88,42 +69,25 @@ class LangSmithConfig(BaseModel):
 
 class AppConfig(BaseModel):
     # 어떤 프로파일을 쓸 것인지: local_hf / openai_api
-    profile: str = "openai_api"  # yaml + CONFIG_PROFILE + RAG_MODE로 결정
     rag_mode: str = "openai_api"  # 코드 가독성을 위해 동일 값 유지
+    model_api_key: Optional[str] = None
+    device: Optional[str] = None  # "cuda" / "cpu" 등
 
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     vectorstore: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     document: DocumentConfig = Field(default_factory=DocumentConfig)
 
-    llm: LLMConfig
-    embeddings: EmbeddingsConfig
+    llm: LLMConfig = Field(default_factory=LLMConfig)
+    embeddings: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
 
     langsmith: LangSmithConfig = Field(default_factory=LangSmithConfig)
 
 
-# ---------- YAML + .env 병합 로직 ----------
+# ---------- 설정 로드 및 병합 함수 ----------
 
 
-def _load_yaml_config_dict() -> Dict[str, Any]:
-    """
-    base.yaml + {profile}.yaml을 읽어서 병합한 dict 반환.
-    profile은 우선순위: ENV(CONFIG_PROFILE) > ENV(RAG_MODE) > local_hf
-    """
-    env_profile = os.getenv("CONFIG_PROFILE") or os.getenv("RAG_MODE") or "openai_api"
-    profile = env_profile.lower()
-
-    base_cfg = load_yaml_if_exists(CONFIG_DIR / "base.yaml")
-    profile_cfg = load_yaml_if_exists(CONFIG_DIR / f"{profile}.yaml")
-
-    merged = deep_update(base_cfg, profile_cfg)
-    # profile / rag_mode 값은 여기서 명시
-    merged.setdefault("profile", profile)
-    merged.setdefault("rag_mode", profile)
-    return merged
-
-
-def _apply_env_overrides(config: AppConfig) -> AppConfig:
+def set_config(config: AppConfig) -> AppConfig:
     """
     .env / 환경변수 값을 AppConfig에 반영.
     '민감 정보'거나 자주 바꾸는 값들 위주로 override.
@@ -155,7 +119,6 @@ def _apply_env_overrides(config: AppConfig) -> AppConfig:
     # 프로파일/모드 전환 (local_hf / openai_api)
     rag_mode = os.getenv("RAG_MODE")
     if rag_mode:
-        config.profile = rag_mode
         config.rag_mode = rag_mode
 
     # HF 관련
@@ -169,25 +132,34 @@ def _apply_env_overrides(config: AppConfig) -> AppConfig:
     openai_model = os.getenv("OPENAI_MODEL_NAME")
     openai_emb = os.getenv("OPENAI_EMBEDDING_MODEL")
 
+    base_cfg = load_yaml_if_exists(CONFIG_DIR / "base.yaml")
+
+    config.chunking.chunk_size = base_cfg.get("chunking", {}).get("chunk_size", 1000)
+    config.chunking.chunk_overlap = base_cfg.get("chunking", {}).get(
+        "chunk_overlap", 150
+    )
+    config.retrieval.k = base_cfg.get("retrieval", {}).get("k", 5)
+    config.llm.temperature = base_cfg.get("llm", {}).get("temperature", 0.0)
+    config.llm.max_new_tokens = base_cfg.get("llm", {}).get("max_new_tokens", 512)
+
     # 프로파일에 따라 LLM/임베딩 override
     if config.rag_mode == "local_hf":
         if hf_model:
             config.llm.model_name = hf_model
         if device:
-            config.llm.device = device
+            config.device = device
         if hf_emb:
             config.embeddings.model_name = hf_emb
         if hf_api_key:
-            config.llm.api_key = hf_api_key
+            config.model_api_key = hf_api_key
+
     elif config.rag_mode == "openai_api":
         if openai_model:
             config.llm.model_name = openai_model
         if openai_api_key:
-            config.llm.api_key = openai_api_key
+            config.model_api_key = openai_api_key
         if openai_emb:
             config.embeddings.model_name = openai_emb
-        if openai_api_key and config.embeddings.api_key is None:
-            config.embeddings.api_key = openai_api_key
 
     return config
 
@@ -206,10 +178,8 @@ def get_app_config() -> AppConfig:
     if _config_cache is not None:
         return _config_cache
 
-    yaml_dict = _load_yaml_config_dict()
-    # YAML dict -> AppConfig
-    config = AppConfig(**yaml_dict)
+    config = AppConfig()
     # .env / 환경변수 반영
-    config = _apply_env_overrides(config)
+    config = set_config(config)
     _config_cache = config
     return config

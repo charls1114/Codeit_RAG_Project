@@ -1,6 +1,7 @@
 from src.rag_service.tracing import setup_tracing
 from src.rag_service.pipelines.ingest import ingest_documents
 from src.rag_service.pipelines.qa_chain import build_rag_chain
+from src.rag_service.config import get_app_config
 import sys
 import os
 from pathlib import Path
@@ -24,11 +25,11 @@ def main():
             file_exists = True
             print(f"폴더 '{chroma_db_path}'에 파일이 있습니다: {item}")
             break  # 파일 하나만 찾아도 멈춤
-
+    cfg = get_app_config()
     setup_tracing()
     if not file_exists:
         ingest_documents(raw_data_path)
-    chain = build_rag_chain(k=5)
+    chain = build_rag_chain(k=cfg.retrieval.k)
 
     print("RFP RAG CLI. 종료하려면 'exit' 입력.")
     while True:

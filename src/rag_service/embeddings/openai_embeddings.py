@@ -6,5 +6,5 @@ def get_openai_embeddings():
     cfg = get_app_config()
     return OpenAIEmbeddings(
         model=cfg.embeddings.model_name,
-        api_key=cfg.embeddings.api_key,
+        api_key=cfg.model_api_key,
     )
