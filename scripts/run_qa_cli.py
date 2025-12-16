@@ -1,9 +1,10 @@
-from src.rag_service.tracing import setup_tracing
+import os
+import sys
+from pathlib import Path
+
 from src.rag_service.pipelines.ingest import ingest_documents
 from src.rag_service.pipelines.qa_chain import build_rag_chain
-import sys
-import os
-from pathlib import Path
+from src.rag_service.tracing import setup_tracing
 
 
 def main():
@@ -12,7 +13,8 @@ def main():
     if str(ROOT_DIR) not in sys.path:
         sys.path.insert(0, str(ROOT_DIR))
     data_dir = Path("/home/public/data")
-    chroma_db_path = data_dir / "chroma_db"
+    # chroma_db_path = data_dir / "chroma_db"
+    chroma_db_path = os.getenv("CHROMA_PERSIST_DIR")
     raw_data_path = data_dir / "raw_data"
     # 폴더 내 파일 목록 가져오기
     items = os.listdir(chroma_db_path)

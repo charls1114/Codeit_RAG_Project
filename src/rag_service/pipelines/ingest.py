@@ -14,6 +14,10 @@ def ingest_documents(source_dir: str | Path):
     chunks = split_documents(docs)
     print(f"[INGEST] Created {len(chunks)} chunks.")
 
+    if not chunks:
+        print("[INGEST] 문서가 없어 벡터 스토어를 생성하지 않습니다.")
+        return None
+
     embeddings = get_embeddings()
     print("[INGEST] Creating Chroma vectorstore...")
     vectordb = create_chroma_from_documents(chunks, embeddings)
