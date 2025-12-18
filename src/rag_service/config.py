@@ -81,7 +81,9 @@ class VectorStoreConfig(BaseModel):
 
 class DocumentConfig(BaseModel):
     allowed_extensions: List[str] = Field(default_factory=lambda: [".pdf", ".hwp"])
-    loader_backend: str = "pymupdf_hwp"  # pymupdf_hwp 또는 "llamaindex_file"
+    loader_backend: str = (
+        "pymupdf_hwp"  # pymupdf_hwp 또는 llamaindex_file 또는 pdf_rich_loader
+    )
     loader_config: PDFRichLoaderConfig = Field(default_factory=PDFRichLoaderConfig)
 
 
@@ -185,31 +187,40 @@ def set_config(config: AppConfig) -> AppConfig:
     config.llm.max_new_tokens = base_cfg.get("llm", {}).get("max_new_tokens", 512)
 
     # ✅ image_processing
-    config.image_processing.extract_images = base_cfg.get("extract_images", True)
-    config.image_processing.image_output_dir = base_cfg.get(
+    img_processing_cfg = base_cfg.get("image_processing", {})
+    config.image_processing.extract_images = img_processing_cfg.get(
+        "extract_images", True
+    )
+    config.image_processing.image_output_dir = img_processing_cfg.get(
         "image_output_dir", "/home/public/data/processed/images"
     )
 
     # OCR 설정
-    config.image_processing.ocr.lang = base_cfg.get("ocr", {}).get("lang", "kor+eng")
-    config.image_processing.ocr.min_text_len = base_cfg.get("ocr", {}).get(
+    config.image_processing.ocr.lang = img_processing_cfg.get("ocr", {}).get(
+        "lang", "kor+eng"
+    )
+    config.image_processing.ocr.min_text_len = img_processing_cfg.get("ocr", {}).get(
         "min_text_len", 5
     )
-    config.image_processing.ocr.engine = base_cfg.get("ocr", {}).get(
+    config.image_processing.ocr.engine = img_processing_cfg.get("ocr", {}).get(
         "engine", "tesseract"
     )
-    config.image_processing.ocr.enabled = base_cfg.get("ocr", {}).get("enabled", True)
+    config.image_processing.ocr.enabled = img_processing_cfg.get("ocr", {}).get(
+        "enabled", True
+    )
 
     # Caption 설정
-    config.image_processing.caption.model = base_cfg.get("caption", {}).get(
+    config.image_processing.caption.model = img_processing_cfg.get("caption", {}).get(
         "model", "gpt-5-mini"
     )
-    config.image_processing.caption.prompt_ko = base_cfg.get("caption", {}).get(
+    config.image_processing.caption.prompt_ko = img_processing_cfg.get(
+        "caption", {}
+    ).get(
         "prompt_ko",
         """이 이미지를 한국어로 간단히 설명해 주세요.
         도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소와 의미를 요약해 주세요.""",
     )
-    config.image_processing.caption.enabled = base_cfg.get("caption", {}).get(
+    config.image_processing.caption.enabled = img_processing_cfg.get("caption", {}).get(
         "enabled", True
     )
 
