@@ -3,7 +3,9 @@ chunking:
   chunk_overlap: 150
 
 retrieval:
-  k: 5
+  k_text: 3
+  k_table: 2
+  k_image: 2
 
 llm:
   temperature: 0.2

@@ -139,7 +139,10 @@ class PDFRichLoader:
                         / f"{pdf_path.stem}"
                         / f"{pdf_path.stem}_p{i+1}_img{j+1}.{ext}"
                     )
-                    img_file.write_bytes(img_bytes)
+                    if img_file.exists():
+                        continue
+                    else:
+                        img_file.write_bytes(img_bytes)
 
                     # ✅ 핵심: 이미지 파일 → OCR+캡션(한국어) Document 생성
                     out.extend(

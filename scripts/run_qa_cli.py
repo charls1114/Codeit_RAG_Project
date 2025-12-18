@@ -25,7 +25,11 @@ def main():
     setup_tracing()
     if not file_exists:
         ingest_documents(raw_data_path)
-    chain = build_rag_chain(k=cfg.retrieval.k)
+    chain = build_rag_chain(
+        k_text=cfg.retrieval.k_text,
+        k_table=cfg.retrieval.k_table,
+        k_image=cfg.retrieval.k_image,
+    )
 
     print("RFP RAG CLI. 종료하려면 'exit' 입력.")
     while True:

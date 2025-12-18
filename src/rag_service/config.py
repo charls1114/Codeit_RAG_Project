@@ -69,7 +69,9 @@ class ChunkingConfig(BaseModel):
 
 
 class RetrievalConfig(BaseModel):
-    k: int = 5
+    k_text: int = 3
+    k_table: int = 2
+    k_image: int = 2
 
 
 class VectorStoreConfig(BaseModel):
@@ -176,7 +178,9 @@ def set_config(config: AppConfig) -> AppConfig:
     config.chunking.chunk_overlap = base_cfg.get("chunking", {}).get(
         "chunk_overlap", 150
     )
-    config.retrieval.k = base_cfg.get("retrieval", {}).get("k", 5)
+    config.retrieval.k_text = base_cfg.get("retrieval", {}).get("k_text", 3)
+    config.retrieval.k_table = base_cfg.get("retrieval", {}).get("k_table", 2)
+    config.retrieval.k_image = base_cfg.get("retrieval", {}).get("k_image", 2)
     config.llm.temperature = base_cfg.get("llm", {}).get("temperature", 0.0)
     config.llm.max_new_tokens = base_cfg.get("llm", {}).get("max_new_tokens", 512)
 
