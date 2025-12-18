@@ -139,6 +139,7 @@ class PDFRichLoader:
                         / f"{pdf_path.stem}"
                         / f"{pdf_path.stem}_p{i+1}_img{j+1}.{ext}"
                     )
+                    img_file.parent.mkdir(parents=True, exist_ok=True)
                     if img_file.exists():
                         continue
                     else:
