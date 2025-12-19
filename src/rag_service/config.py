@@ -23,6 +23,11 @@ if ENV_PATH.exists():
 
 
 def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
+    """
+    YAML 파일이 존재하면 로드하고, 아니면 빈 dict를 반환합니다.
+    - path: YAML 파일의 경로
+    - return: YAML 내용을 담은 dict, 파일이 없으면 빈 dict
+    """
     if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as f:
@@ -34,19 +39,31 @@ def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
 
 @dataclass
 class PDFRichLoaderConfig:
+    """
+    PDF 로더 설정
+    """
+
     extract_tables: bool = True
-    table_flavor: str = "stream"  # stream/lattice
+    table_flavor: str = "stream"  # stream 또는 lattice
     max_pages: Optional[int] = None
 
 
 class OCRConfig(BaseModel):
+    """
+    OCR 관련 설정
+    """
+
     enabled: bool = True
-    engine: str = "tesseract"  # "tesseract" | "paddleocr"
+    engine: str = "tesseract"  # "tesseract" 또는 "paddleocr"
     lang: str = "kor+eng"
     min_text_len: int = 5
 
 
 class CaptionConfig(BaseModel):
+    """
+    이미지 캡션 설정
+    """
+
     enabled: bool = True
     backend: str = "openai"  # 현재 패치에서는 openai 위주
     model: str = "gpt-5-mini"
@@ -57,6 +74,10 @@ class CaptionConfig(BaseModel):
 
 
 class ImageProcessingConfig(BaseModel):
+    """
+    이미지 처리 관련 설정
+    """
+
     extract_images: bool = True
     image_output_dir: str = "/home/public/data/processed/images"
     ocr: OCRConfig = Field(default_factory=OCRConfig)
@@ -64,66 +85,91 @@ class ImageProcessingConfig(BaseModel):
 
 
 class ChunkingConfig(BaseModel):
+    """
+    청킹 관련 설정
+    """
+
     chunk_size: int = 1000
     chunk_overlap: int = 150
 
 
 class RetrievalConfig(BaseModel):
+    """
+    검색기 관련 설정
+    """
+
     k_text: int = 3
     k_table: int = 2
     k_image: int = 2
 
 
 class VectorStoreConfig(BaseModel):
+    """
+    벡터스토어 관련 설정
+    """
+
     persist_dir: str = "/home/public/data/chroma_db"
     collection_name: str = "rfp_rag"
 
 
 class DocumentConfig(BaseModel):
+    """
+    문서 관련 설정
+    """
+
     allowed_extensions: List[str] = Field(default_factory=lambda: [".pdf", ".hwp"])
-    loader_backend: str = (
-        "pymupdf_hwp"  # pymupdf_hwp 또는 llamaindex_file 또는 pdf_rich_loader
-    )
+    loader_backend: str = "pymupdf_hwp"  # pymupdf_hwp 또는 pdf_rich_loader 또는 llama_index
     loader_config: PDFRichLoaderConfig = Field(default_factory=PDFRichLoaderConfig)
 
 
 class LLMConfig(BaseModel):
-    # 공통
+    """
+    LLM 설정
+    """
+
     model_name: str = None
     temperature: float = 0.0
     max_new_tokens: int = 512
 
 
 class EmbeddingsConfig(BaseModel):
+    """
+    임베딩 모델 설정
+    """
+
     model_name: str = None
 
 
 class LangSmithConfig(BaseModel):
+    """
+    LangSmith 설정
+    """
+
     enabled: bool = True
     api_key: Optional[str] = None
     project: str = "rfp-rag-project"
 
 
 class AppConfig(BaseModel):
-    # 어떤 프로파일을 쓸 것인지: local_hf / openai_api
-    rag_mode: str = "openai_api"  # 코드 가독성을 위해 동일 값 유지
+    """
+    애플리케이션의 설정을 담은 Pydantic 모델입니다.
+    YAML 파일과 .env를 합쳐서 사용합니다.
+    """
+
+    rag_mode: str = "openai_api"  # local_hf 또는 openai_api
     model_api_key: Optional[str] = None
-    device: Optional[str] = None  # "cuda" / "cpu" 등
+    device: Optional[str] = None  # "cuda" 또는 "cpu"
 
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     vectorstore: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     document: DocumentConfig = Field(default_factory=DocumentConfig)
-
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embeddings: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
 
     langsmith: LangSmithConfig = Field(default_factory=LangSmithConfig)
 
-    # ✅ 신규
-    image_processing: ImageProcessingConfig = Field(
-        default_factory=ImageProcessingConfig
-    )
+    image_processing: ImageProcessingConfig = Field(default_factory=ImageProcessingConfig)
 
 
 # ---------- 설정 로드 및 병합 함수 ----------
@@ -131,8 +177,8 @@ class AppConfig(BaseModel):
 
 def set_config(config: AppConfig) -> AppConfig:
     """
-    .env / 환경변수 값을 AppConfig에 반영.
-    '민감 정보'거나 자주 바꾸는 값들 위주로 override.
+    .env / 환경변수 값을 AppConfig에 반영합니다.
+    - config: AppConfig 인스턴스
     """
 
     # 공통: LangSmith
@@ -174,48 +220,44 @@ def set_config(config: AppConfig) -> AppConfig:
     openai_model = os.getenv("OPENAI_MODEL_NAME")
     openai_emb = os.getenv("OPENAI_EMBEDDING_MODEL")
 
+    # base.yaml에서 기본값 로드
     base_cfg = load_yaml_if_exists(CONFIG_DIR / "base.yaml")
 
+    # 텍스트 스플리터 옵션 설정
     config.chunking.chunk_size = base_cfg.get("chunking", {}).get("chunk_size", 1000)
-    config.chunking.chunk_overlap = base_cfg.get("chunking", {}).get(
-        "chunk_overlap", 150
-    )
+    config.chunking.chunk_overlap = base_cfg.get("chunking", {}).get("chunk_overlap", 150)
+
+    # 벡터저장소 검색기 설정
     config.retrieval.k_text = base_cfg.get("retrieval", {}).get("k_text", 3)
     config.retrieval.k_table = base_cfg.get("retrieval", {}).get("k_table", 2)
     config.retrieval.k_image = base_cfg.get("retrieval", {}).get("k_image", 2)
+
+    # LLM 설정
     config.llm.temperature = base_cfg.get("llm", {}).get("temperature", 0.0)
     config.llm.max_new_tokens = base_cfg.get("llm", {}).get("max_new_tokens", 512)
 
     # ✅ image_processing
     img_processing_cfg = base_cfg.get("image_processing", {})
-    config.image_processing.extract_images = img_processing_cfg.get(
-        "extract_images", True
-    )
+    config.image_processing.extract_images = img_processing_cfg.get("extract_images", True)
     config.image_processing.image_output_dir = img_processing_cfg.get(
         "image_output_dir", "/home/public/data/processed/images"
     )
 
     # OCR 설정
-    config.image_processing.ocr.lang = img_processing_cfg.get("ocr", {}).get(
-        "lang", "kor+eng"
-    )
+    config.image_processing.ocr.lang = img_processing_cfg.get("ocr", {}).get("lang", "kor+eng")
     config.image_processing.ocr.min_text_len = img_processing_cfg.get("ocr", {}).get(
         "min_text_len", 5
     )
     config.image_processing.ocr.engine = img_processing_cfg.get("ocr", {}).get(
         "engine", "tesseract"
     )
-    config.image_processing.ocr.enabled = img_processing_cfg.get("ocr", {}).get(
-        "enabled", True
-    )
+    config.image_processing.ocr.enabled = img_processing_cfg.get("ocr", {}).get("enabled", True)
 
     # Caption 설정
     config.image_processing.caption.model = img_processing_cfg.get("caption", {}).get(
         "model", "gpt-5-mini"
     )
-    config.image_processing.caption.prompt_ko = img_processing_cfg.get(
-        "caption", {}
-    ).get(
+    config.image_processing.caption.prompt_ko = img_processing_cfg.get("caption", {}).get(
         "prompt_ko",
         """이 이미지를 한국어로 간단히 설명해 주세요.
         도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소와 의미를 요약해 주세요.""",

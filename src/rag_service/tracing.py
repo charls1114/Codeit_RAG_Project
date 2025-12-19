@@ -3,6 +3,9 @@ from .config import get_app_config
 
 
 def setup_tracing():
+    """
+    LangSmith 트레이싱 설정을 합니다.
+    """
     cfg = get_app_config()
     if cfg.langsmith and cfg.langsmith.api_key:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"

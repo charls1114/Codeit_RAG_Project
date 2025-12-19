@@ -3,6 +3,9 @@ from ..config import get_app_config
 
 
 def get_openai_llm():
+    """
+    OpenAI LLM을 생성합니다.
+    """
     cfg = get_app_config()
     return ChatOpenAI(
         model=cfg.llm.model_name,

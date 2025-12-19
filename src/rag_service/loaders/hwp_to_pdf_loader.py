@@ -10,7 +10,7 @@ from .pdf_rich_loader import PDFRichLoader, PDFRichLoaderConfig
 class HWPToPDFThenParseLoader:
     """
     HWP/HWPX를 LibreOffice(headless)로 PDF 변환 후,
-    PDFRichLoader로 텍스트/표/이미지까지 추출한다.
+    PDFRichLoader로 텍스트/표/이미지까지 추출합니다.
     """
 
     def __init__(self, pdf_loader_cfg: PDFRichLoaderConfig):

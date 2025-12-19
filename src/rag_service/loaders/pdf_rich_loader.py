@@ -13,14 +13,11 @@ from ..config import get_app_config, PDFRichLoaderConfig
 from ..image_processing.image_to_docs import ImageToDocs, ImageToDocsConfig
 
 
-# @dataclass
-# class PDFRichLoaderConfig:
-#     extract_tables: bool = True
-#     table_flavor: str = "stream"  # stream/lattice
-#     max_pages: Optional[int] = None
-
-
 class PDFRichLoader:
+    """
+    PDF 파일에서 텍스트, 테이블, 이미지를 추출하여 Document로 변환합니다.
+    """
+
     def __init__(self, cfg: PDFRichLoaderConfig | None = None):
         self.cfg = cfg or PDFRichLoaderConfig()
         self.app_cfg = get_app_config()
@@ -29,6 +26,7 @@ class PDFRichLoader:
         ip = self.app_cfg.image_processing
         Path(ip.image_output_dir).mkdir(parents=True, exist_ok=True)
 
+        # 이미지 -> 텍스트 요약 모듈 초기화
         self.image_to_docs = ImageToDocs(
             ImageToDocsConfig(
                 ocr_enabled=ip.ocr.enabled,
@@ -41,27 +39,36 @@ class PDFRichLoader:
         )
 
     def load(self, pdf_path: str | Path) -> List[Document]:
+        """
+        PDF 파일에서 텍스트, 테이블, 이미지를 추출하여 Document로 변환합니다.
+        - pdf_path: PDF 파일 경로
+        - return: Document의 목록
+        """
         pdf_path = Path(pdf_path)
         docs: List[Document] = []
 
+        # ✅ 텍스트 추출
         docs.extend(self._extract_text_docs(pdf_path))
 
+        # ✅ 테이블 추출
         if self.cfg.extract_tables:
             docs.extend(self._extract_table_docs(pdf_path))
 
+        # ✅ 이미지 추출
         if self.app_cfg.image_processing.extract_images:
             docs.extend(self._extract_image_docs(pdf_path))
 
         return docs
 
     def _extract_text_docs(self, pdf_path: Path) -> List[Document]:
+        """
+        PDF 파일에서 fitz로 텍스트를 추출하여 Document로 변환합니다.
+        - pdf_path: PDF 파일 경로
+        - return: Document의 목록
+        """
         out: List[Document] = []
         with fitz.open(pdf_path) as doc:
-            end = (
-                min(doc.page_count, self.cfg.max_pages)
-                if self.cfg.max_pages
-                else doc.page_count
-            )
+            end = min(doc.page_count, self.cfg.max_pages) if self.cfg.max_pages else doc.page_count
             for i in range(end):
                 page = doc.load_page(i)
                 text = page.get_text("text").strip()
@@ -80,11 +87,14 @@ class PDFRichLoader:
         return out
 
     def _extract_table_docs(self, pdf_path: Path) -> List[Document]:
+        """
+        PDF 파일에서 camelot으로 테이블을 추출하여 Document로 변환합니다.
+        - pdf_path: PDF 파일 경로
+        - return: Document의 목록
+        """
         out: List[Document] = []
         try:
-            tables = camelot.read_pdf(
-                str(pdf_path), pages="all", flavor=self.cfg.table_flavor
-            )
+            tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=self.cfg.table_flavor)
         except Exception as e:
             out.append(
                 Document(
@@ -114,15 +124,16 @@ class PDFRichLoader:
         return out
 
     def _extract_image_docs(self, pdf_path: Path) -> List[Document]:
+        """
+        PDF 파일에서 fitz로 페이지마다 이미지를 추출하여 Document로 변환합니다.
+        - pdf_path: PDF 파일 경로
+        - return: Document의 목록
+        """
         out: List[Document] = []
         ip = self.app_cfg.image_processing
 
         with fitz.open(pdf_path) as doc:
-            end = (
-                min(doc.page_count, self.cfg.max_pages)
-                if self.cfg.max_pages
-                else doc.page_count
-            )
+            end = min(doc.page_count, self.cfg.max_pages) if self.cfg.max_pages else doc.page_count
 
             for i in range(end):
                 page = doc.load_page(i)

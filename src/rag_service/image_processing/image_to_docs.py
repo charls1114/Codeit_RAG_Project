@@ -24,6 +24,10 @@ from ..config import get_app_config
 
 @dataclass
 class ImageToDocsConfig:
+    """
+    이미지에서 OCR 텍스트와 캡션을 추출하여 Document로 변환할 때 사용하는 설정입니다.
+    """
+
     ocr_enabled: bool = True
     ocr_lang: str = "kor+eng"
     min_text_len: int = 5
@@ -38,6 +42,10 @@ class ImageToDocsConfig:
 
 
 class ImageToDocs:
+    """
+    이미지에서 OCR 텍스트와 캡션을 추출하여 Document로 변환합니다.
+    """
+
     def __init__(self, cfg: ImageToDocsConfig):
         self.cfg = cfg
         app_cfg = get_app_config()
@@ -55,6 +63,14 @@ class ImageToDocs:
         page: Optional[int] = None,
         extra_meta: Optional[Dict[str, Any]] = None,
     ) -> List[Document]:
+        """
+        이미지에서 OCR 텍스트와 캡션을 추출하여 Document로 변환합니다.
+        - image_path: 이미지 파일 경로
+        - source: 원본 문서의 소스 정보
+        - page: 원본 문서의 페이지 번호
+        - extra_meta: 추가 메타데이터
+        - return: Document 목록
+        """
         image_path = Path(image_path)
         meta = {"source": source, "type": "image", "image_path": str(image_path)}
         if page is not None:
@@ -76,6 +92,11 @@ class ImageToDocs:
         return [Document(page_content="\n\n".join(parts).strip(), metadata=meta)]
 
     def _run_ocr(self, image_path: Path) -> str:
+        """
+        OCR을 실행하여 이미지에서 텍스트를 추출합니다.
+        - image_path: 이미지 파일 경로
+        - return: 추출된 텍스트
+        """
         if not TESS_AVAILABLE:
             return ""
         img = Image.open(image_path).convert("RGB")
@@ -83,12 +104,22 @@ class ImageToDocs:
         return txt if len(txt) >= self.cfg.min_text_len else ""
 
     def _image_to_data_url(self, image_path: Path) -> str:
+        """
+        이미지를 base64 인코딩된 data URL로 변환합니다.
+        - image_path: 이미지 파일 경로
+        - return: data URL
+        """
         ext = image_path.suffix.lower().lstrip(".") or "png"
         mime = "image/png" if ext in ["png"] else "image/jpeg"
         b64 = base64.b64encode(image_path.read_bytes()).decode("utf-8")
         return f"data:{mime};base64,{b64}"
 
     def _run_openai_caption_ko(self, image_path: Path) -> str:
+        """
+        OpenAI를 사용하여 이미지에 대한 한국어 캡션을 생성합니다.
+        - image_path: 이미지 파일 경로
+        - return: 생성된 캡션
+        """
         data_url = self._image_to_data_url(image_path)
 
         # OpenAI 비전 입력: content blocks (text + image_url) :contentReference[oaicite:2]{index=2}

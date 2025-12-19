@@ -9,15 +9,27 @@ from .retrieval import retrieve_multi
 
 
 def _format_docs(docs: List[Document]) -> str:
+    """
+    문서들을 포맷팅하여 메타데이터를 포함한 문자열로 반환합니다.
+    - docs: 문서들의 목록
+    """
     parts = []
     for d in docs:
         m = d.metadata or {}
-        header = f"파일 출처: {m.get('source')} | 페이지: {m.get('page')} | 데이터 타입: {m.get('type')}"
+        header = (
+            f"파일 출처: {m.get('source')} | 페이지: {m.get('page')} | 데이터 타입: {m.get('type')}"
+        )
         parts.append(header + "\n" + (d.page_content or ""))
     return "\n\n".join(parts)
 
 
 def build_rag_chain(k_text: int = 4, k_table: int = 3, k_image: int = 3):
+    """
+    RAG(Retrieval-Augmented Generation) 체인을 구축합니다.
+    - k_text: 텍스트 청크 검색 개수
+    - k_table: 표 청크 검색 개수
+    - k_image: 이미지 청크 검색 개수
+    """
     llm = get_llm()
 
     prompt = ChatPromptTemplate.from_template(

@@ -8,9 +8,15 @@ from ..config import get_app_config
 
 def split_documents(docs: List[Document]) -> List[Document]:
     """
-    - text: chunking 적용
-    - image: (보통 짧으니) 기본적으로 chunking 하지 않음 (원하면 옵션으로 확장 가능)
-    - table: Markdown 테이블 구조 깨지므로 chunking 제외
+    pdf_rich_loader를 사용하는 경우
+        - text: chunking 적용
+        - image: (보통 짧으니) 기본적으로 chunking 하지 않음 (원하면 옵션으로 확장 가능)
+        - table: Markdown 테이블 구조 깨지므로 chunking 제외
+    그 외 loader를 사용하는 경우:
+        - text: chunking 적용
+
+    - docs: Document의 list
+    - return: chunking이 적용된 Document의 list
     """
     cfg = get_app_config()
     splitter = RecursiveCharacterTextSplitter(

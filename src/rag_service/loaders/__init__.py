@@ -6,6 +6,9 @@ from .rfp_rich_loader import RFPRichDocumentLoader
 
 
 def get_document_loader() -> BaseRFPDocumentLoader:
+    """
+    RFP 문서 로더를 가져옵니다.
+    """
     cfg = get_app_config()
     backend = cfg.document.loader_backend.lower()
     print(f"DOC_LOADER_BACKEND: {backend}")

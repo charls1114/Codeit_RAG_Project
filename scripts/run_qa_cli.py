@@ -13,6 +13,7 @@ def main():
     raw_data_path = data_dir / "raw_data"
     # 폴더 내 파일 목록 가져오기
     chroma_db_path = cfg.vectorstore.persist_dir
+    os.makedirs(chroma_db_path, exist_ok=True)
     items = os.listdir(chroma_db_path)
     # 파일이 존재하는지 확인
     file_exists = False

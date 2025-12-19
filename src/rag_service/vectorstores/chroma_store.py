@@ -12,9 +12,11 @@ def create_chroma_from_documents(
     collection_name: str = "rfp_rag",
 ) -> Chroma:
     cfg = get_app_config()
+    # 벡터저장소 디렉토리 없을시 생성
     persist_dir = Path(cfg.vectorstore.persist_dir)
     persist_dir.mkdir(parents=True, exist_ok=True)
 
+    # 입력받은 문서로 벡터저장소 생성
     vectordb = Chroma.from_documents(
         documents=docs,
         embedding=embeddings,
@@ -29,6 +31,7 @@ def load_chroma(
     collection_name: str = "rfp_rag",
 ) -> Chroma:
     cfg = get_app_config()
+    # 폴더에 저장된 벡터저장소 로드
     return Chroma(
         collection_name=collection_name,
         embedding_function=embeddings,

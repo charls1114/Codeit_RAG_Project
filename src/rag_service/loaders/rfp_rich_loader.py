@@ -2,11 +2,18 @@ from pathlib import Path
 from typing import List
 from langchain_core.documents import Document
 
+from .base import BaseRFPDocumentLoader
 from .pdf_rich_loader import PDFRichLoader, PDFRichLoaderConfig
 from .hwp_to_pdf_loader import HWPToPDFThenParseLoader
 
 
-class RFPRichDocumentLoader:
+class RFPRichDocumentLoader(BaseRFPDocumentLoader):
+    """
+    RFPRichDocumentLoader는 PDF와 HWP 문서를 로드하는 클래스입니다.
+    이 클래스는 PDF와 HWP 파일을 로드하고, 그 내용을 Document 형태로 반환합니다.
+    HWP 파일은 PDF로 변환 후 로드됩니다.
+    """
+
     def __init__(self, cfg: PDFRichLoaderConfig):
         self.pdf_loader = PDFRichLoader(cfg)
         self.hwp_loader = HWPToPDFThenParseLoader(cfg)
