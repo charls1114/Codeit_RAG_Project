@@ -68,7 +68,11 @@ class PDFRichLoader:
         """
         out: List[Document] = []
         with fitz.open(pdf_path) as doc:
-            end = min(doc.page_count, self.cfg.max_pages) if self.cfg.max_pages else doc.page_count
+            end = (
+                min(doc.page_count, self.cfg.max_pages)
+                if self.cfg.max_pages
+                else doc.page_count
+            )
             for i in range(end):
                 page = doc.load_page(i)
                 text = page.get_text("text").strip()
@@ -94,7 +98,9 @@ class PDFRichLoader:
         """
         out: List[Document] = []
         try:
-            tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=self.cfg.table_flavor)
+            tables = camelot.read_pdf(
+                str(pdf_path), pages="all", flavor=self.cfg.table_flavor
+            )
         except Exception as e:
             out.append(
                 Document(
@@ -133,7 +139,11 @@ class PDFRichLoader:
         ip = self.app_cfg.image_processing
 
         with fitz.open(pdf_path) as doc:
-            end = min(doc.page_count, self.cfg.max_pages) if self.cfg.max_pages else doc.page_count
+            end = (
+                min(doc.page_count, self.cfg.max_pages)
+                if self.cfg.max_pages
+                else doc.page_count
+            )
 
             for i in range(end):
                 page = doc.load_page(i)
