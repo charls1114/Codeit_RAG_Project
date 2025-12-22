@@ -4,22 +4,20 @@ from typing import List
 from langchain_core.documents import Document
 from .base import BaseRFPDocumentLoader
 
-# 실제 패키지 이름/클래스는 설치 후 확인 필요 (예시)
-from llama_index.readers.file import FlatReader  # or SimpleFileReader / SimpleDirectoryReader
+from llama_index.readers.file import HWPReader, PyMuPDFReader
 
 
 class LlamaIndexRFPDocumentLoader(BaseRFPDocumentLoader):
     def __init__(self):
-        # FlatReader는 다양한 파일 타입 지원 (pdf, hwp 등)
-        self.reader = FlatReader()
+        self.hwp_reader = HWPReader()
+        self.pdf_reader = PyMuPDFReader()
 
     def _convert_to_langchain_docs(self, li_docs) -> List[Document]:
         lc_docs: List[Document] = []
         for d in li_docs:
-            # d.text, d.metadata 가 있다고 가정
             lc_docs.append(
                 Document(
-                    page_content=d.text,
+                    page_content=d.text_resource.text,
                     metadata={**(d.metadata or {}), "doc_type": "rfp"},
                 )
             )
@@ -27,10 +25,18 @@ class LlamaIndexRFPDocumentLoader(BaseRFPDocumentLoader):
 
     def load(self, path: str | Path) -> List[Document]:
         path = Path(path)
-        li_docs = self.reader.load_data(file=path)
+        # llama_index의 load_data는 페이지 구분 없이 문서 전체를 한번에 로드함
+        if path.suffix.lower() == ".hwp":
+            li_docs = self.hwp_reader.load_data(file=path)
+        elif path.suffix.lower() == ".pdf":
+            li_docs = self.pdf_reader.load_data(file_path=path)
+        else:
+            raise ValueError(f"Unsupported file format: {path.suffix}")
         return self._convert_to_langchain_docs(li_docs)
 
     def load_directory(self, dir_path: str | Path) -> List[Document]:
         dir_path = Path(dir_path)
-        li_docs = self.reader.load_data(dir_path=dir_path)
-        return self._convert_to_langchain_docs(li_docs)
+        all_docs = []
+        for fp in dir_path.glob("**/*"):
+            all_docs.extend(self.load(fp))
+        return all_docs

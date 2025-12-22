@@ -1,21 +1,38 @@
+from __future__ import annotations
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from typing import List
 from ..config import get_app_config
 
 
-def get_text_splitter(
-    chunk_size: int = 1000,
-    chunk_overlap: int = 150,
-) -> RecursiveCharacterTextSplitter:
-    return RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", " ", ""],
+def split_documents(docs: List[Document]) -> List[Document]:
+    """
+    pdf_rich_loader를 사용하는 경우
+        - text: chunking 적용
+        - image: (보통 짧으니) 기본적으로 chunking 하지 않음 (원하면 옵션으로 확장 가능)
+        - table: Markdown 테이블 구조 깨지므로 chunking 제외
+    그 외 loader를 사용하는 경우:
+        - text: chunking 적용
+
+    - docs: Document의 list
+    - return: chunking이 적용된 Document의 list
+    """
+    cfg = get_app_config()
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=cfg.chunking.chunk_size,
+        chunk_overlap=cfg.chunking.chunk_overlap,
     )
 
+    out: List[Document] = []
+    for d in docs:
+        dtype = (d.metadata or {}).get("type", "text")
+        if dtype in ["table", "table_error"]:
+            out.append(d)
+        elif dtype == "image":
+            # 이미지 문서는 OCR+캡션+요약이 이미 구조화되어 있으므로 그대로 유지
+            out.append(d)
+        else:
+            out.extend(splitter.split_documents([d]))
 
-def split_documents(docs: List[Document]) -> List[Document]:
-    cfg = get_app_config()
-    splitter = get_text_splitter(cfg.chunking.chunk_size, cfg.chunking.chunk_overlap)
-    return splitter.split_documents(docs)
+    return out

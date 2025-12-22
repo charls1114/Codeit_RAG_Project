@@ -3,18 +3,29 @@ chunking:
   chunk_overlap: 150
 
 retrieval:
-  k: 5
+  k_text: 3
+  k_table: 2
+  k_image: 2
 
-vectorstore:
-  persist_dir: "./data/chroma_db"
-  collection_name: "rfp_rag"
+llm:
+  temperature: 0.2
+  max_new_tokens: 2048
 
-document:
-  allowed_extensions:
-    - ".pdf"
-    - ".hwp"
-  loader_backend: "pymupdf_hwp"
+image_processing:
+  extract_images: true
+  image_output_dir: "/home/public/data/processed/images"
 
-langsmith:
-  enabled: true
-  project: "rfp-rag-project"
+  ocr:
+    enabled: true
+    engine: "tesseract"
+    lang: "kor+eng"
+    min_text_len: 5
+
+  caption:
+    enabled: true
+    backend: "openai"
+    model: "gpt-5-mini"   # 비전 입력을 지원하는 모델로 설정
+    prompt_ko: |
+      이 이미지를 한국어로 간단히 설명해 주세요.
+      도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소(항목/축/범례/단계)와 의미를 요약해 주세요.
+      RFP 문서 분석에 도움이 되도록 핵심 정보만 정리해 주세요.

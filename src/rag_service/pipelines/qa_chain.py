@@ -1,14 +1,36 @@
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from typing import List
+from langchain_core.documents import Document
 
 from ..llms import get_llm
-from .retrieval import get_retriever
+from .retrieval import retrieve_multi
 
 
-def build_rag_chain(k: int = 5):
+def _format_docs(docs: List[Document]) -> str:
+    """
+    문서들을 포맷팅하여 메타데이터를 포함한 문자열로 반환합니다.
+    - docs: 문서들의 목록
+    """
+    parts = []
+    for d in docs:
+        m = d.metadata or {}
+        header = (
+            f"파일 출처: {m.get('source')} | 페이지: {m.get('page')} | 데이터 타입: {m.get('type')}"
+        )
+        parts.append(header + "\n" + (d.page_content or ""))
+    return "\n\n".join(parts)
+
+
+def build_rag_chain(k_text: int = 4, k_table: int = 3, k_image: int = 3):
+    """
+    RAG(Retrieval-Augmented Generation) 체인을 구축합니다.
+    - k_text: 텍스트 청크 검색 개수
+    - k_table: 표 청크 검색 개수
+    - k_image: 이미지 청크 검색 개수
+    """
     llm = get_llm()
-    retriever = get_retriever(k=k)
 
     prompt = ChatPromptTemplate.from_template(
         """
@@ -23,15 +45,19 @@ def build_rag_chain(k: int = 5):
         {context}
         """
     )
+    retriever = RunnableLambda(
+        lambda x: retrieve_multi(x, k_text=k_text, k_table=k_table, k_image=k_image)
+    )
+    format_ctx = RunnableLambda(lambda docs: _format_docs(docs))
 
     rag_chain = (
         {
-            "context": retriever
-            | (lambda docs: "\n\n".join(d.page_content for d in docs)),
             "question": RunnablePassthrough(),
+            "context": retriever | format_ctx,
         }
         | prompt
         | llm
         | StrOutputParser()
     )
+
     return rag_chain

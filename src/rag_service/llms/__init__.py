@@ -4,6 +4,9 @@ from .openai_llm import get_openai_llm
 
 
 def get_llm():
+    """
+    RAG_MODE에 따라 적절한 LLM 인스턴스를 가져옵니다.
+    """
     cfg = get_app_config()
     if cfg.rag_mode == "local_hf":
         return get_local_hf_llm()

@@ -5,17 +5,20 @@ from dotenv import load_dotenv
 
 
 def get_local_hf_llm():
+    """
+    HuggingFacePipeline을 사용하여 로컬 LLM을 가져옵니다.
+    """
     load_dotenv()  # 루트 .env 로드
     cfg = get_app_config()
     model_name = cfg.llm.model_name
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=cfg.llm.api_key)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=cfg.model_api_key)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        device_map=cfg.llm.device,
+        device_map=cfg.device,
         dtype="auto",
         # LGAI-EXAONE
-        token=cfg.llm.api_key,
+        token=cfg.model_api_key,
         trust_remote_code=True,
     )
     gen_pipeline = pipeline(

@@ -6,6 +6,10 @@ from ..vectorstores.chroma_store import create_chroma_from_documents
 
 
 def ingest_documents(source_dir: str | Path):
+    """
+    주어진 디렉토리에서 문서를 로드하고, 청크로 분할한 후 Chroma 벡터스토어에 저장합니다.
+    - source_dir: 문서가 저장된 디렉토리 경로
+    """
     loader = get_document_loader()
     print(f"[INGEST] Loading documents from {source_dir} ...")
     docs = loader.load_directory(source_dir)
