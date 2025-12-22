@@ -1,5 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-from langchain_huggingface import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
 from ..config import get_app_config
 from dotenv import load_dotenv
 

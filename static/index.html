@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG AI Chatbot</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <header class="chat-header">
+            <h1>🤖 Codeit RAG Chatbot</h1>
+        </header>
+
+        <div class="chat-container">
+            <div id="chatBox" class="chat-box">
+                <div class="chat-message bot">
+                    안녕하세요! 무엇이 궁금하신가요?<br>
+                    문서 내용을 바탕으로 답변해 드릴게요.
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="질문을 입력하세요..." autofocus>
+                <button onclick="sendChat()" id="sendBtn">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
