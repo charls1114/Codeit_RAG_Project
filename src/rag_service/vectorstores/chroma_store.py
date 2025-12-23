@@ -11,6 +11,15 @@ def create_chroma_from_documents(
     embeddings: Embeddings,
     collection_name: str = "rfp_rag",
 ) -> Chroma:
+    """
+    주어진 문서들로 Chroma 벡터저장소를 생성하고 저장합니다.
+    Args:
+        docs: Document 목록
+        embeddings: 임베딩 모델
+        collection_name: 컬렉션 이름
+    Returns:
+        Chroma 벡터저장소
+    """
     cfg = get_app_config()
     # 벡터저장소 디렉토리 없을시 생성
     persist_dir = Path(cfg.vectorstore.persist_dir)
@@ -30,6 +39,14 @@ def load_chroma(
     embeddings: Embeddings,
     collection_name: str = "rfp_rag",
 ) -> Chroma:
+    """
+    폴더에 저장된 Chroma 벡터저장소를 로드합니다.
+    Args:
+        embeddings: 임베딩 모델
+        collection_name: 컬렉션 이름
+    Returns:
+        Chroma 벡터저장소
+    """
     cfg = get_app_config()
     # 폴더에 저장된 벡터저장소 로드
     return Chroma(

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
-from dataclasses import dataclass
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -25,8 +24,10 @@ if ENV_PATH.exists():
 def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
     """
     YAML 파일이 존재하면 로드하고, 아니면 빈 dict를 반환합니다.
-    - path: YAML 파일의 경로
-    - return: YAML 내용을 담은 dict, 파일이 없으면 빈 dict
+    Args:
+        path: YAML 파일의 경로
+    Returns:
+        YAML 내용을 담은 dict, 파일이 없으면 빈 dict
     """
     if not path.exists():
         return {}
@@ -36,40 +37,23 @@ def load_yaml_if_exists(path: Path) -> Dict[str, Any]:
 
 # ---------- Pydantic 설정 모델들 ----------
 
-
-@dataclass
-class PDFRichLoaderConfig:
-    """
-    PDF 로더 설정
-    """
-
-    extract_tables: bool = True
-    table_flavor: str = "stream"  # stream 또는 lattice
-    max_pages: Optional[int] = None
-
-
-class OCRConfig(BaseModel):
-    """
-    OCR 관련 설정
-    """
-
-    enabled: bool = True
-    engine: str = "tesseract"  # "tesseract" 또는 "paddleocr"
-    lang: str = "kor+eng"
-    min_text_len: int = 5
+# ---------------------------
+#       RAG 시스템 설정
+# ----------------------------
 
 
 class CaptionConfig(BaseModel):
     """
-    이미지 캡션 설정
+    이미지에서 캡션을 추출하여 Document로 변환할 때 사용하는 설정입니다.
     """
 
     enabled: bool = True
-    backend: str = "openai"  # 현재 패치에서는 openai 위주
     model: str = "gpt-5-mini"
     prompt_ko: str = (
-        "이 이미지를 한국어로 간단히 설명해 주세요. "
-        "도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소와 의미를 요약해 주세요."
+        "이 그림을 한국어로 500자 이내로 간단히 설명해 주세요."
+        "도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소(항목/축/범례/단계)와 의미를 요약해 주세요. "
+        "RFP 문서 분석에 도움이 되도록 핵심 정보만 정리해 주세요."
+        "RFP 문서와 관련이 없는 그림이라면 설명하지 마세요."
     )
 
 
@@ -80,13 +64,24 @@ class ImageProcessingConfig(BaseModel):
 
     extract_images: bool = True
     image_output_dir: str = "/home/public/data/processed/images"
-    ocr: OCRConfig = Field(default_factory=OCRConfig)
     caption: CaptionConfig = Field(default_factory=CaptionConfig)
+
+
+class MultiModalLoaderConfig(BaseModel):
+    """
+    로더 설정
+    """
+
+    extract_tables: bool = True
+    max_pages: Optional[int] = None
+    image_processing: ImageProcessingConfig = Field(
+        default_factory=ImageProcessingConfig
+    )
 
 
 class ChunkingConfig(BaseModel):
     """
-    청킹 관련 설정
+    텍스트 스플리터 청킹 관련 설정
     """
 
     chunk_size: int = 1000
@@ -112,16 +107,6 @@ class VectorStoreConfig(BaseModel):
     collection_name: str = "rfp_rag"
 
 
-class DocumentConfig(BaseModel):
-    """
-    문서 관련 설정
-    """
-
-    allowed_extensions: List[str] = Field(default_factory=lambda: [".pdf", ".hwp"])
-    loader_backend: str = "pymupdf_hwp"  # pymupdf_hwp 또는 pdf_rich_loader 또는 llama_index
-    loader_config: PDFRichLoaderConfig = Field(default_factory=PDFRichLoaderConfig)
-
-
 class LLMConfig(BaseModel):
     """
     LLM 설정
@@ -145,7 +130,7 @@ class LangSmithConfig(BaseModel):
     LangSmith 설정
     """
 
-    enabled: bool = True
+    enabled: str = "true"
     api_key: Optional[str] = None
     project: str = "rfp-rag-project"
 
@@ -163,13 +148,13 @@ class AppConfig(BaseModel):
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     vectorstore: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
-    document: DocumentConfig = Field(default_factory=DocumentConfig)
+    loader_config: MultiModalLoaderConfig = Field(
+        default_factory=MultiModalLoaderConfig
+    )
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embeddings: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
 
     langsmith: LangSmithConfig = Field(default_factory=LangSmithConfig)
-
-    image_processing: ImageProcessingConfig = Field(default_factory=ImageProcessingConfig)
 
 
 # ---------- 설정 로드 및 병합 함수 ----------
@@ -178,36 +163,15 @@ class AppConfig(BaseModel):
 def set_config(config: AppConfig) -> AppConfig:
     """
     .env / 환경변수 값을 AppConfig에 반영합니다.
-    - config: AppConfig 인스턴스
+    Args:
+        config: 기본 AppConfig 객체
+    Returns:
+        AppConfig: .env / 환경변수 값이 반영된 AppConfig 객체
     """
-
-    # 공통: LangSmith
-    ls_enabled = os.getenv("LANGCHAIN_TRACING_V2")
-    if ls_enabled is not None:
-        config.langsmith.enabled = ls_enabled.lower() == "true"
-
+    # LangSmith API 키 설정
     ls_api_key = os.getenv("LANGCHAIN_API_KEY")
     if ls_api_key:
         config.langsmith.api_key = ls_api_key
-
-    ls_project = os.getenv("LANGCHAIN_PROJECT")
-    if ls_project:
-        config.langsmith.project = ls_project
-
-    # 문서 로더 백엔드
-    loader_backend = os.getenv("DOC_LOADER_BACKEND")
-    if loader_backend:
-        config.document.loader_backend = loader_backend
-
-    # 벡터스토어 경로
-    chroma_dir = os.getenv("CHROMA_PERSIST_DIR")
-    if chroma_dir:
-        config.vectorstore.persist_dir = chroma_dir
-
-    # 프로파일/모드 전환 (local_hf / openai_api)
-    rag_mode = os.getenv("RAG_MODE")
-    if rag_mode:
-        config.rag_mode = rag_mode
 
     # HF 관련
     hf_model = os.getenv("HF_MODEL_NAME")
@@ -216,55 +180,9 @@ def set_config(config: AppConfig) -> AppConfig:
     device = os.getenv("DEVICE")
 
     # OpenAI 관련
-    openai_api_key = os.getenv("OPENAI_API_KEY")
     openai_model = os.getenv("OPENAI_MODEL_NAME")
     openai_emb = os.getenv("OPENAI_EMBEDDING_MODEL")
-
-    # base.yaml에서 기본값 로드
-    base_cfg = load_yaml_if_exists(CONFIG_DIR / "base.yaml")
-
-    # 텍스트 스플리터 옵션 설정
-    config.chunking.chunk_size = base_cfg.get("chunking", {}).get("chunk_size", 1000)
-    config.chunking.chunk_overlap = base_cfg.get("chunking", {}).get("chunk_overlap", 150)
-
-    # 벡터저장소 검색기 설정
-    config.retrieval.k_text = base_cfg.get("retrieval", {}).get("k_text", 3)
-    config.retrieval.k_table = base_cfg.get("retrieval", {}).get("k_table", 2)
-    config.retrieval.k_image = base_cfg.get("retrieval", {}).get("k_image", 2)
-
-    # LLM 설정
-    config.llm.temperature = base_cfg.get("llm", {}).get("temperature", 0.0)
-    config.llm.max_new_tokens = base_cfg.get("llm", {}).get("max_new_tokens", 512)
-
-    # ✅ image_processing
-    img_processing_cfg = base_cfg.get("image_processing", {})
-    config.image_processing.extract_images = img_processing_cfg.get("extract_images", True)
-    config.image_processing.image_output_dir = img_processing_cfg.get(
-        "image_output_dir", "/home/public/data/processed/images"
-    )
-
-    # OCR 설정
-    config.image_processing.ocr.lang = img_processing_cfg.get("ocr", {}).get("lang", "kor+eng")
-    config.image_processing.ocr.min_text_len = img_processing_cfg.get("ocr", {}).get(
-        "min_text_len", 5
-    )
-    config.image_processing.ocr.engine = img_processing_cfg.get("ocr", {}).get(
-        "engine", "tesseract"
-    )
-    config.image_processing.ocr.enabled = img_processing_cfg.get("ocr", {}).get("enabled", True)
-
-    # Caption 설정
-    config.image_processing.caption.model = img_processing_cfg.get("caption", {}).get(
-        "model", "gpt-5-mini"
-    )
-    config.image_processing.caption.prompt_ko = img_processing_cfg.get("caption", {}).get(
-        "prompt_ko",
-        """이 이미지를 한국어로 간단히 설명해 주세요.
-        도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소와 의미를 요약해 주세요.""",
-    )
-    config.image_processing.caption.enabled = img_processing_cfg.get("caption", {}).get(
-        "enabled", True
-    )
+    openai_api_key = os.getenv("OPENAI_API_KEY")
 
     # 프로파일에 따라 LLM/임베딩 override
     if config.rag_mode == "local_hf":
@@ -280,10 +198,10 @@ def set_config(config: AppConfig) -> AppConfig:
     elif config.rag_mode == "openai_api":
         if openai_model:
             config.llm.model_name = openai_model
-        if openai_api_key:
-            config.model_api_key = openai_api_key
         if openai_emb:
             config.embeddings.model_name = openai_emb
+        if openai_api_key:
+            config.model_api_key = openai_api_key
 
     return config
 
@@ -301,9 +219,18 @@ def get_app_config() -> AppConfig:
     global _config_cache
     if _config_cache is not None:
         return _config_cache
+    yaml_config = load_yaml_if_exists(CONFIG_DIR / "base.yaml")
 
-    config = AppConfig()
+    # ---------------------
+    # yaml 설정 로드 및 반영
+    # ---------------------
+
+    config = AppConfig(**yaml_config)
+
+    # ---------------------
     # .env / 환경변수 반영
+    # ---------------------
+
     config = set_config(config)
     _config_cache = config
     return config

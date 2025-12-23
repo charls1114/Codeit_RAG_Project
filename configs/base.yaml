@@ -1,3 +1,24 @@
+rag_mode: openai_api  # local_hf 또는 openai_api
+
+loader_config:
+  extract_tables: true
+  max_pages: 200
+  image_processing:
+    extract_images: true
+    image_output_dir: "/home/public/data/processed/images"
+    caption:
+      enabled: true
+      model: "gpt-5-mini"   # 비전 입력을 지원하는 모델로 설정
+      prompt_ko: |
+        당신은 RFP 문서 내에 포함된 이미지의 내용을 설명해주는 전문가입니다.
+        아래 지침에 따라 이미지를 분석하고 500자 이내로 요약해 주세요.
+        ---
+        - 도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소(항목/축/범례/단계)와 의미를 요약해 주세요.
+        - 그래프/차트라면 어떤 데이터가 어떻게 변화하는지 요약 설명해 주세요.
+        - 기관 로고, 디자인 로고 등 그 외 이미지는 설명하지 말고 "RFP 문서와 관련이 없는 그림입니다."라고 답변해 주세요.
+        - 개인정보가 포함되어 있다면 설명에 포함하지 마세요.
+        ---
+
 chunking:
   chunk_size: 1000
   chunk_overlap: 150
@@ -7,25 +28,15 @@ retrieval:
   k_table: 2
   k_image: 2
 
+vectorstore:
+  persist_dir: "/home/public/data/multimodal_db"
+  collection_name: "rfp_rag"
+
 llm:
   temperature: 0.2
   max_new_tokens: 2048
 
-image_processing:
-  extract_images: true
-  image_output_dir: "/home/public/data/processed/images"
+langsmith:
+  enabled: "true"
+  project: "rfp-rag-project"
 
-  ocr:
-    enabled: true
-    engine: "tesseract"
-    lang: "kor+eng"
-    min_text_len: 5
-
-  caption:
-    enabled: true
-    backend: "openai"
-    model: "gpt-5-mini"   # 비전 입력을 지원하는 모델로 설정
-    prompt_ko: |
-      이 이미지를 한국어로 간단히 설명해 주세요.
-      도표/표/흐름도/아키텍처 그림이라면 핵심 구성요소(항목/축/범례/단계)와 의미를 요약해 주세요.
-      RFP 문서 분석에 도움이 되도록 핵심 정보만 정리해 주세요.
