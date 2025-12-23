@@ -6,6 +6,8 @@ from .openai_embeddings import get_openai_embeddings
 def get_embeddings():
     """
     RAG_MODE에 따라 적절한 임베딩 모델을 반환합니다.
+    Returns:
+        임베딩 모델 인스턴스
     """
     cfg = get_app_config()
     if cfg.rag_mode == "local_hf":

@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 def get_local_hf_llm():
     """
     HuggingFacePipeline을 사용하여 로컬 LLM을 가져옵니다.
+    Returns:
+        HuggingFacePipeline: 로컬 HuggingFace LLM 객체
     """
     load_dotenv()  # 루트 .env 로드
     cfg = get_app_config()
