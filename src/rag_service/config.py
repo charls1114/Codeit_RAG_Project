@@ -74,7 +74,9 @@ class MultiModalLoaderConfig(BaseModel):
 
     extract_tables: bool = True
     max_pages: Optional[int] = None
-    image_processing: ImageProcessingConfig = Field(default_factory=ImageProcessingConfig)
+    image_processing: ImageProcessingConfig = Field(
+        default_factory=ImageProcessingConfig
+    )
 
 
 class ChunkingConfig(BaseModel):
@@ -128,7 +130,7 @@ class LangSmithConfig(BaseModel):
     LangSmith 설정
     """
 
-    enabled: bool = True
+    enabled: str = "true"
     api_key: Optional[str] = None
     project: str = "rfp-rag-project"
 
@@ -146,7 +148,9 @@ class AppConfig(BaseModel):
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     vectorstore: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
-    loader_config: MultiModalLoaderConfig = Field(default_factory=MultiModalLoaderConfig)
+    loader_config: MultiModalLoaderConfig = Field(
+        default_factory=MultiModalLoaderConfig
+    )
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embeddings: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
 

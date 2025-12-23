@@ -173,7 +173,6 @@ class MultiModalLoader(BaseRFPDocumentLoader):
                         img_file.write_bytes(img_bytes)
 
                     # ✅ 핵심: 이미지 파일 → 캡션(한국어) Document 생성
-                    print(f"{img_file}에서 Document 생성 중...")
                     out.extend(
                         self.image_to_docs.make_docs_from_image(
                             image_path=img_file,

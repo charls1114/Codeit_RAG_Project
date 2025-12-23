@@ -56,10 +56,6 @@ class ImageToDocs:
         parts = [f"[IMAGE] {image_path.name}"]
         if caption_text:
             parts.append("[CAPTION_KO]\n" + caption_text)
-            print(f"[CAPTION_KO] 생성된 캡션: {caption_text}")
-        else:
-            print("[CAPTION_KO] 캡션이 생성되지 않았습니다.")
-        print(f"{image_path}에서 Document 생성 완료.")
         return [Document(page_content="\n\n".join(parts).strip(), metadata=meta)]
 
     def _image_to_data_url(self, image_path: Path) -> str:
