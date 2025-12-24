@@ -1,41 +1,31 @@
+# 파일: scripts/run_server.py
 import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-# 프로젝트 루트 경로 설정
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-# FastAPI 관련 임포트
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 import uvicorn
 
-# --- 기존 모듈 임포트 ---
-from src.rag_service.tracing import setup_tracing
-from src.rag_service.pipelines.ingest import ingest_documents
+# --- [모듈 임포트] ---
+from src.rag_service.models.schemas import QuestionRequest
+from src.rag_service.core.startup import initialize_vector_db, get_retriever_and_chain
 from src.rag_service.pipelines.qa_chain import build_rag_chain
-from src.rag_service.config import get_app_config
-
-# [추가] DB 직접 검색을 위한 라이브러리
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-
-# 전역 변수
-rag_chain = None
-retriever_for_check = None  # [추가] 데이터가 있는지 미리 찔러볼 검색기
-chat_history = []  # [추가] 대화 내용을 저장할 리스트 (휘발성)
+from src.rag_service.services.chat_flow import ChatService
 
 # =================================================================
-# 📍 경로 설정
+# 📍 전역 변수
 # =================================================================
+chat_service = None  # 모든 로직을 담고 있는 매니저 객체
+
+# 경로 설정
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent
 static_dir = project_root / "static"
-
-# 권한 문제로 수정 불가능한 데이터 경로는 그대로 둡니다.
 data_dir = Path("/home/public/data")
 raw_data_path = data_dir / "raw_data"
 # =================================================================
@@ -43,132 +33,94 @@ raw_data_path = data_dir / "raw_data"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global rag_chain, retriever_for_check
-    print("서버 시작 중... 설정 및 모델 로딩...")
+    # [1] 전역 변수 호출
+    # 함수 밖에서도 이 변수(chat_service)를 계속 써야 하므로 'global'로 선언합니다.
+    # 만약 global을 안 쓰면, 이 함수가 끝날 때 chat_service 변수도 같이 사라져 버립니다.
+    global chat_service
 
-    cfg = get_app_config()
-    chroma_db_path = cfg.vectorstore.persist_dir
-    setup_tracing()
+    # [2] 데이터베이스(DB) 안전 점검
+    # startup.py에 있는 함수를 호출합니다.
+    # 실제 역할: "DB 폴더가 비었나? 비었으면 raw_data 폴더에서 문서를 읽어서 채워넣어라."
+    # 서버가 켜지기 전에 데이터가 준비되어 있어야 하므로 가장 먼저 실행합니다.
+    initialize_vector_db(raw_data_path)
 
-    # 1. 문서 적재 시도 (권한 없으면 실패할 수 있으니 try-except 감싸기)
-    if not os.path.exists(chroma_db_path) or not os.listdir(chroma_db_path):
-        print("⚠️ DB가 비어있어 보입니다. 적재를 시도합니다.")
-        try:
-            if raw_data_path.exists():
-                ingest_documents(raw_data_path)
-            else:
-                print(f"❌ 데이터 폴더 없음: {raw_data_path}")
-        except Exception as e:
-            print(f"⚠️ 문서 적재 중 에러 발생 (권한 문제 등): {e}")
-            print("👉 기존 DB를 읽기 전용으로 사용하거나, 빈 상태로 시작합니다.")
+    # [3] 핵심 부품 조달 (Factory Pattern)
+    # startup.py의 함수를 호출하여 두 가지 핵심 도구를 받아옵니다.
+    # - retriever: "도서관 사서" (문서 찾는 도구)
+    # - chain: "AI 작가" (답변 쓰는 도구)
+    # 이 과정에서 OpenAI API 연결, ChromaDB 연결 등이 내부적으로 일어납니다.
+    retriever, chain = get_retriever_and_chain(build_rag_chain)
 
-    # 2. [핵심] 검색기(Retriever) 별도 생성
-    # RAG 체인과 별개로, '문서가 진짜 있나?' 확인용으로 씁니다.
-    try:
-        embedding_function = OpenAIEmbeddings(model=cfg.embeddings.model_name)
-        vectorstore = Chroma(
-            persist_directory=chroma_db_path,
-            embedding_function=embedding_function,
-            collection_name=cfg.vectorstore.collection_name,
-        )
-        # 검색기 생성 (유사도 점수 기반)
-        retriever_for_check = vectorstore.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={"k": 1, "score_threshold": 0.3},  # 정확도 0.3 미만이면 무시
-        )
-        print("✅ 데이터 확인용 검색기(Retriever) 준비 완료")
-    except Exception as e:
-        print(f"❌ 검색기 초기화 실패: {e}")
+    # [4] 서비스 매니저 조립 (Dependency Injection)
+    # 여기가 제일 중요합니다.
+    # ChatService라는 "총괄 매니저"를 고용하는데, 빈손으로 고용하는 게 아닙니다.
+    # 위에서 구한 도구(retriever, chain)를 손에 쥐여주면서 생성합니다.
+    # 이제 ChatService는 이 도구들을 가지고 평생(서버 켜져있는 동안) 일합니다.
+    chat_service = ChatService(retriever=retriever, chain=chain)
 
-    # 3. 체인 생성
-    rag_chain = build_rag_chain(
-        k_text=cfg.retrieval.k_text,
-        k_table=cfg.retrieval.k_table,
-        k_image=cfg.retrieval.k_image,
-    )
-    print("🚀 서버 준비 완료!")
+    print("🚀 서버 준비 완료! ChatService 가동 중...")
 
+    # [5] 일시 정지 (Yield)
+    # yield는 "양보하다"라는 뜻입니다.
+    # 여기서 lifespan 함수의 실행은 '일시 정지' 상태가 되고, 서버의 제어권이 FastAPI로 넘어갑니다.
+    # 즉, 이 시점부터 서버는 "영업 시작(Listening)" 상태가 됩니다.
     yield
+
+    # [6] 영업 종료 (Cleanup)
+    # 사용자가 서버를 강제로 끄면(Ctrl+C), yield 이후의 코드가 실행됩니다.
+    # DB 연결을 끊거나, 로그를 저장하는 등의 마무리 작업을 여기서 합니다.
     print("서버 종료.")
 
 
+# [1] 앱 생성 및 수명주기 연결
+# FastAPI 앱을 만드는데, "이 앱의 시작과 끝은 lifespan 함수가 관리한다"라고 지정해줍니다.
 app = FastAPI(lifespan=lifespan)
+
+# [2] 정적 파일 연결 (Mounting)
+# "/static"이라는 주소로 들어오는 요청은 static_dir 폴더의 파일을 그대로 보여주라는 뜻입니다.
+# 예: 브라우저가 http://.../static/style.css 를 요청하면 -> static 폴더의 style.css를 줌.
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-
-class QuestionRequest(BaseModel):
-    query: str
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
+    # [1] index.html 파일 찾기
     index_file = static_dir / "index.html"
+
+    # [2] 파일 존재 여부 방어 코드
+    # 만약 index.html이 없으면 404 에러를 띄웁니다.
     if not index_file.exists():
         return HTMLResponse(content="<h1>Error: index.html not found</h1>", status_code=404)
+
+    # [3] 파일 읽어서 돌려주기
+    # 파일을 열어서(open) 그 안의 HTML 텍스트를 읽은 뒤(read),
+    # 브라우저에게 그대로 던져줍니다(return). 브라우저는 이 HTML을 해석해서 화면을 그립니다.
     with open(index_file, "r", encoding="utf-8") as f:
         return f.read()
 
 
+# [1] 요청 모델 정의 (Pydantic)
+# request: QuestionRequest -> "들어오는 데이터는 무조건 QuestionRequest(schemas.py) 모양이어야 해"
+# 만약 사용자가 이상한 데이터를 보내면 FastAPI가 알아서 에러를 뱉습니다.
 @app.post("/api/chat")
 async def chat_endpoint(request: QuestionRequest):
-    global rag_chain, retriever_for_check, chat_history
-
-    user_query = request.query
-
-    # ---------------------------------------------------------
-    # 1단계: 참고자료 존재 여부 확인 (Pre-check)
-    # ---------------------------------------------------------
-    if retriever_for_check:
-        # DB에서 가장 비슷한 문서 1개를 찾아봅니다.
-        docs = retriever_for_check.invoke(user_query)
-
-        # 문서가 하나도 안 잡히면 바로 거절 메시지 리턴
-        if not docs:
-            print(f"📭 검색 결과 없음: '{user_query}'")
-            return {"answer": "참고자료를 찾지 못했습니다."}
-
-    # ---------------------------------------------------------
-    # 2단계: 메모리(이전 대화) 적용
-    # ---------------------------------------------------------
-    # 최근 대화 2턴(질문+답변 2세트)만 요약해서 가져옵니다. (용량 절약)
-    recent_history = chat_history[-4:]
-    history_text = "\n".join(recent_history)
-
-    # 질문을 [이전 대화 요약 + 현재 질문] 형태로 수정해서 AI에게 던집니다.
-    augmented_query = f"""
-    [이전 대화 내용 참고]
-    {history_text}
-
-    [현재 질문]
-    {user_query}
     """
+    Controller Layer (컨트롤러 계층)
+    - 역할: 요청을 받고(Input), 일꾼에게 시키고(Process), 결과를 돌려줌(Output).
+    - 절대로 여기서 복잡한 계산을 하지 않습니다.
+    """
+    # 전역 변수로 만들어둔 서비스 매니저를 불러옵니다.
+    global chat_service
 
-    # (디버깅용) 실제로 AI에게 들어가는 질문 출력
-    print(f"📝 입력 프롬프트:\n{augmented_query}")
+    # [2] 업무 위임 (Delegation)
+    # "야, 서비스 매니저(chat_service)! 손님이 질문(request.query) 가져왔어. 답변 좀 만들어봐."
+    # 모든 지지고 볶는 과정(검색, 메모리, 생성)은 generate_reply 함수 안에서 일어납니다.
+    # 서버 코드는 그 과정에 대해 알 필요가 없습니다. (캡슐화)
+    answer = chat_service.generate_reply(request.query)
 
-    # ---------------------------------------------------------
-    # 3단계: RAG 답변 생성
-    # ---------------------------------------------------------
-    if rag_chain is None:
-        return {"answer": "모델이 아직 준비되지 않았습니다."}
-
-    # 수정된 질문(augmented_query)을 넣습니다.
-    # 만약 AI가 프롬프트를 그대로 읊는다면 request.query를 그대로 쓰되,
-    # 문맥 유지가 안 될 수 있습니다. (현재 방식이 가장 호환성이 좋습니다.)
-    answer = rag_chain.invoke(augmented_query)
-    final_answer = str(answer)
-
-    # ---------------------------------------------------------
-    # 4단계: 메모리에 저장 (휘발성)
-    # ---------------------------------------------------------
-    chat_history.append(f"Q: {user_query}")
-    chat_history.append(f"A: {final_answer}")
-
-    # 메모리가 너무 길어지면 앞에서부터 자름 (최대 10개 문장 유지)
-    if len(chat_history) > 10:
-        chat_history.pop(0)
-
-    return {"answer": final_answer}
+    # [3] 결과 반환
+    # 서비스 매니저가 준 답변을 JSON 형태로 포장해서 손님에게 건네줍니다.
+    return {"answer": answer}
 
 
 if __name__ == "__main__":
