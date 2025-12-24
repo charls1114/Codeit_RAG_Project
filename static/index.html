@@ -3,31 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG AI Chatbot</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <title>AI 지식상담 챗봇</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="main-container">
+    <div class="app-container">
         <header class="chat-header">
-            <h1>🤖 Codeit RAG Chatbot</h1>
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>입찰메이트 AI</h1>
+                <p>입찰지원 전문 컨설팅 AI</p>
+            </div>
         </header>
 
-        <div class="chat-container">
+        <main class="chat-container">
             <div id="chatBox" class="chat-box">
-                <div class="chat-message bot">
-                    안녕하세요! 무엇이 궁금하신가요?<br>
-                    문서 내용을 바탕으로 답변해 드릴게요.
                 </div>
-            </div>
+        </main>
 
-            <div class="input-area">
-                <input type="text" id="chatInput" placeholder="질문을 입력하세요..." autofocus>
-                <button onclick="sendChat()" id="sendBtn">전송</button>
+        <footer class="input-container">
+            <div class="input-wrapper">
+                <input type="text" id="chatInput" placeholder="질문을 입력해 주세요." autocomplete="off">
+                <button id="sendBtn">전송</button>
             </div>
-        </div>
+        </footer>
     </div>
 
-    <script src="/static/script.js"></script>
+    <script type="module" src="/static/js/main.js"></script>
 </body>
 </html>
