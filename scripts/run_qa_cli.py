@@ -9,8 +9,7 @@ from pathlib import Path
 def main():
     cfg = get_app_config()
     # 원본 데이터 폴더 경로 지정
-    data_dir = Path("/home/public/data")
-    raw_data_path = data_dir / "raw_data"
+    raw_data_path = cfg.raw_data_dir
     # 폴더 내 파일 목록 가져오기
     chroma_db_path = Path(cfg.vectorstore.persist_dir)
     os.makedirs(chroma_db_path, exist_ok=True)
