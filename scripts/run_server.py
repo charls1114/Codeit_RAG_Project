@@ -13,7 +13,8 @@ import uvicorn
 
 # --- [모듈 임포트] ---
 from src.rag_service.models.schemas import QuestionRequest
-from src.rag_service.core.startup import initialize_vector_db, get_retriever_and_chain
+from src.rag_service.core.startup import initialize_vector_db
+from src.rag_service.config import get_app_config
 from src.rag_service.pipelines.qa_chain import build_rag_chain
 from src.rag_service.services.chat_flow import ChatService
 
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
     # 함수 밖에서도 이 변수(chat_service)를 계속 써야 하므로 'global'로 선언합니다.
     # 만약 global을 안 쓰면, 이 함수가 끝날 때 chat_service 변수도 같이 사라져 버립니다.
     global chat_service
-
+    cfg = get_app_config()
     # [2] 데이터베이스(DB) 안전 점검
     # startup.py에 있는 함수를 호출합니다.
     # 실제 역할: "DB 폴더가 비었나? 비었으면 raw_data 폴더에서 문서를 읽어서 채워넣어라."
@@ -46,17 +47,20 @@ async def lifespan(app: FastAPI):
 
     # [3] 핵심 부품 조달 (Factory Pattern)
     # startup.py의 함수를 호출하여 두 가지 핵심 도구를 받아옵니다.
-    # - retriever: "도서관 사서" (문서 찾는 도구)
     # - chain: "AI 작가" (답변 쓰는 도구)
     # 이 과정에서 OpenAI API 연결, ChromaDB 연결 등이 내부적으로 일어납니다.
-    retriever, chain = get_retriever_and_chain(build_rag_chain)
+    chain = build_rag_chain(
+        k_text=cfg.retrieval.k_text,
+        k_table=cfg.retrieval.k_table,
+        k_image=cfg.retrieval.k_image,
+    )
 
     # [4] 서비스 매니저 조립 (Dependency Injection)
     # 여기가 제일 중요합니다.
     # ChatService라는 "총괄 매니저"를 고용하는데, 빈손으로 고용하는 게 아닙니다.
-    # 위에서 구한 도구(retriever, chain)를 손에 쥐여주면서 생성합니다.
+    # 위에서 구한 도구(chain)를 손에 쥐여주면서 생성합니다.
     # 이제 ChatService는 이 도구들을 가지고 평생(서버 켜져있는 동안) 일합니다.
-    chat_service = ChatService(retriever=retriever, chain=chain)
+    chat_service = ChatService(chain=chain)
 
     print("🚀 서버 준비 완료! ChatService 가동 중...")
 
@@ -112,13 +116,13 @@ async def chat_endpoint(request: QuestionRequest):
     # 전역 변수로 만들어둔 서비스 매니저를 불러옵니다.
     global chat_service
 
-    # [2] 업무 위임 (Delegation)
+    # [1] 업무 위임 (Delegation)
     # "야, 서비스 매니저(chat_service)! 손님이 질문(request.query) 가져왔어. 답변 좀 만들어봐."
     # 모든 지지고 볶는 과정(검색, 메모리, 생성)은 generate_reply 함수 안에서 일어납니다.
     # 서버 코드는 그 과정에 대해 알 필요가 없습니다. (캡슐화)
     answer = chat_service.generate_reply(request.query)
 
-    # [3] 결과 반환
+    # [2] 결과 반환
     # 서비스 매니저가 준 답변을 JSON 형태로 포장해서 손님에게 건네줍니다.
     return {"answer": answer}
 
