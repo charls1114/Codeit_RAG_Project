@@ -63,7 +63,7 @@ class ImageProcessingConfig(BaseModel):
     """
 
     extract_images: bool = True
-    image_output_dir: str = "/home/public/data/processed/images"
+    image_output_dir: str = None
     caption: CaptionConfig = Field(default_factory=CaptionConfig)
 
 
@@ -103,7 +103,7 @@ class VectorStoreConfig(BaseModel):
     벡터스토어 관련 설정
     """
 
-    persist_dir: str = "/home/public/data/chroma_db"
+    persist_dir: str = None
     collection_name: str = "rfp_rag"
 
 
@@ -172,6 +172,14 @@ def set_config(config: AppConfig) -> AppConfig:
     ls_api_key = os.getenv("LANGCHAIN_API_KEY")
     if ls_api_key:
         config.langsmith.api_key = ls_api_key
+
+    # 이미지 처리 폴더 경로 설정
+    config.loader_config.image_processing.image_output_dir = os.getenv(
+        "IMAGE_OUTPUT_DIR"
+    )
+
+    # 벡터스토어 저장 폴더 경로 설정
+    config.vectorstore.persist_dir = os.getenv("VECTORSTORE_PERSIST_DIR")
 
     # HF 관련
     hf_model = os.getenv("HF_MODEL_NAME")
