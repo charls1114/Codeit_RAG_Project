@@ -1,0 +1,26 @@
+/* 색상, 폰트, 테마 설정*/
+:root {
+    /* Color Palette: Modern & Trustworthy */
+    --primary-color: #4F46E5;       /* 딥 인디고 (신뢰감) */
+    --primary-light: #818CF8;
+    --primary-gradient: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
+
+    --bg-color: #F3F4F6;            /* 쿨 그레이 배경 */
+    --chat-bg: #FFFFFF;             /* 채팅창 배경 */
+
+    --text-main: #1F2937;
+    --text-sub: #6B7280;
+    --text-white: #FFFFFF;
+
+    /* Message Bubbles */
+    --bot-msg-bg: #F3F4F6;
+    --bot-msg-text: #1F2937;
+    --user-msg-bg: #4F46E5;
+    --user-msg-text: #FFFFFF;
+
+    /* Effects */
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-input: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    --radius-lg: 20px;
+    --radius-md: 12px;
+}
