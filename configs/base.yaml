@@ -5,7 +5,6 @@ loader_config:
   max_pages: 200
   image_processing:
     extract_images: true
-    image_output_dir: "/home/public/data/processed/images"
     caption:
       enabled: true
       model: "gpt-5-mini"   # 비전 입력을 지원하는 모델로 설정
@@ -29,7 +28,6 @@ retrieval:
   k_image: 2
 
 vectorstore:
-  persist_dir: "/home/public/data/multimodal_db"
   collection_name: "rfp_rag"
 
 llm:
