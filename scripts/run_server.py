@@ -27,8 +27,6 @@ chat_service = None  # 모든 로직을 담고 있는 매니저 객체
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent
 static_dir = project_root / "static"
-data_dir = Path("/home/public/data")
-raw_data_path = data_dir / "raw_data"
 # =================================================================
 
 
@@ -43,7 +41,7 @@ async def lifespan(app: FastAPI):
     # startup.py에 있는 함수를 호출합니다.
     # 실제 역할: "DB 폴더가 비었나? 비었으면 raw_data 폴더에서 문서를 읽어서 채워넣어라."
     # 서버가 켜지기 전에 데이터가 준비되어 있어야 하므로 가장 먼저 실행합니다.
-    initialize_vector_db(raw_data_path)
+    initialize_vector_db(Path(cfg.raw_data_dir))
 
     # [3] 핵심 부품 조달 (Factory Pattern)
     # startup.py의 함수를 호출하여 두 가지 핵심 도구를 받아옵니다.
@@ -94,7 +92,9 @@ async def read_root():
     # [2] 파일 존재 여부 방어 코드
     # 만약 index.html이 없으면 404 에러를 띄웁니다.
     if not index_file.exists():
-        return HTMLResponse(content="<h1>Error: index.html not found</h1>", status_code=404)
+        return HTMLResponse(
+            content="<h1>Error: index.html not found</h1>", status_code=404
+        )
 
     # [3] 파일 읽어서 돌려주기
     # 파일을 열어서(open) 그 안의 HTML 텍스트를 읽은 뒤(read),

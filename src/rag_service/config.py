@@ -144,6 +144,7 @@ class AppConfig(BaseModel):
     rag_mode: str = "openai_api"  # local_hf 또는 openai_api
     model_api_key: Optional[str] = None
     device: Optional[str] = None  # "cuda" 또는 "cpu"
+    raw_data_dir: str = None
 
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
@@ -180,6 +181,9 @@ def set_config(config: AppConfig) -> AppConfig:
 
     # 벡터스토어 저장 폴더 경로 설정
     config.vectorstore.persist_dir = os.getenv("VECTORSTORE_PERSIST_DIR")
+
+    # 원본 데이터 저장 폴더 경로 설정
+    config.raw_data_dir = os.getenv("RAW_DATA_DIR")
 
     # HF 관련
     hf_model = os.getenv("HF_MODEL_NAME")
