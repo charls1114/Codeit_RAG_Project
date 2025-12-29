@@ -5,6 +5,8 @@ from ..config import get_app_config
 def get_local_hf_embeddings():
     """
     HuggingFace 임베딩 모델을 로드하여 반환합니다.
+    Returns:
+        HuggingFaceEmbeddings: 로컬 HuggingFace 임베딩 모델 객체
     """
     cfg = get_app_config()
     return HuggingFaceEmbeddings(

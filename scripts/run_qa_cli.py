@@ -2,30 +2,30 @@ from src.rag_service.tracing import setup_tracing
 from src.rag_service.pipelines.ingest import ingest_documents
 from src.rag_service.pipelines.qa_chain import build_rag_chain
 from src.rag_service.config import get_app_config
-import sys
 import os
 from pathlib import Path
 
 
 def main():
     cfg = get_app_config()
+    # 원본 데이터 폴더 경로 지정
     data_dir = Path("/home/public/data")
     raw_data_path = data_dir / "raw_data"
     # 폴더 내 파일 목록 가져오기
-    chroma_db_path = cfg.vectorstore.persist_dir
+    chroma_db_path = Path(cfg.vectorstore.persist_dir)
     os.makedirs(chroma_db_path, exist_ok=True)
-    items = os.listdir(chroma_db_path)
-    # 파일이 존재하는지 확인
-    file_exists = False
-    for item in items:
-        item_path = os.path.join(chroma_db_path, item)
-        if os.path.isfile(item_path):  # 해당 항목이 파일이면 True 반환
-            file_exists = True
-            print(f"폴더 '{chroma_db_path}'에 파일이 있습니다: {item}")
-            break  # 파일 하나만 찾아도 멈춤
-    setup_tracing()
+
+    # 벡터 DB 폴더에 DB 파일이 있는지 확인
+    file_exists = any(chroma_db_path.iterdir())
+
     if not file_exists:
+        print("벡터 DB가 존재하지 않습니다. 문서 임베딩을 생성합니다...")
         ingest_documents(raw_data_path)
+        print("문서 임베딩이 완료되었습니다.")
+    else:
+        print("벡터 DB가 이미 존재합니다. 임베딩 생성을 건너뜁니다.")
+
+    setup_tracing()
     chain = build_rag_chain(
         k_text=cfg.retrieval.k_text,
         k_table=cfg.retrieval.k_table,
