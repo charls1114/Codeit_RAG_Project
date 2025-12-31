@@ -26,29 +26,28 @@ PDF 제안요청서(RFP) 문서를 **텍스트/표/이미지(캡션)** 단위로
 
 ## 프로젝트 구조
 
-.
-├─ configs/
-│ └─ base.yaml # 기본 설정(로더/청킹/검색 k/LLM 등)
-├─ scripts/
-│ ├─ run_server.py # FastAPI 서버(웹 UI + /api/chat)
-│ └─ run_qa_cli.py # 터미널 Q&A CLI
-├─ src/
-│ └─ rag_service/
-│ ├─ chunking/ # 청킹 로직
-│ ├─ core/ # startup/메모리 등 공통
-│ ├─ embeddings/ # OpenAI/HF 임베딩
-│ ├─ image_processing/ # 이미지→캡션→Document
-│ ├─ llms/ # OpenAI/HF LLM
-│ ├─ loaders/ # 멀티모달 PDF 로더
-│ ├─ models/ # FastAPI 요청 스키마 등
-│ ├─ pipelines/ # ingest/retrieval/qa_chain
-│ ├─ services/ # ChatService(대화 흐름 매니저)
-│ └─ vectorstores/ # Chroma 저장/로드
-├─ static/ # 프론트 정적 리소스(index.html, js, css)
-├─ notebooks/ # 실험/평가 노트북
-├─ requirements.txt
-├─ .env.example
-└─ README.md
+├─ configs/  
+│ └─ base.yaml # 기본 설정(로더/청킹/검색 k/LLM 등)  
+├─ scripts/  
+│ ├─ run_server.py # FastAPI 서버(웹 UI + /api/chat)  
+│ └─ run_qa_cli.py # 터미널 Q&A CLI  
+├─ src/  
+│ └─ rag_service/  
+│ ├─ chunking/ # 청킹 로직  
+│ ├─ core/ # startup/메모리 등 공통  
+│ ├─ embeddings/ # OpenAI/HF 임베딩  
+│ ├─ image_processing/ # 이미지→캡션→Document  
+│ ├─ llms/ # OpenAI/HF LLM  
+│ ├─ loaders/ # 멀티모달 PDF 로더  
+│ ├─ models/ # FastAPI 요청 스키마 등  
+│ ├─ pipelines/ # ingest/retrieval/qa_chain  
+│ ├─ services/ # ChatService(대화 흐름 매니저)  
+│ └─ vectorstores/ # Chroma 저장/로드  
+├─ static/ # 프론트 정적 리소스(index.html, js, css)  
+├─ notebooks/ # 실험/평가 노트북  
+├─ requirements.txt  
+├─ .env.example  
+└─ README.md  
 
 
 ---
