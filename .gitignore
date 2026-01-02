@@ -20,3 +20,4 @@ log/*
 tmp/*
 data/raw/*
 data/chroma_db/*
+eval/data/*

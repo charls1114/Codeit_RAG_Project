@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
+import json
 
 from pydantic import BaseModel, Field
 
 from langgraph.graph import StateGraph, END
 
+from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -137,7 +139,11 @@ class FinalRequiredInfoPayload(BaseModel):
 # =========================================================
 @dataclass
 class CRAGState:
-    original_question: str
+    """
+    그래프 상태 저장 객체
+    """
+
+    # 사용자 질문
     question: str
 
     docs: List[Document] = field(default_factory=list)
@@ -145,6 +151,7 @@ class CRAGState:
     extracted: RfpRequiredInfoWithEvidence = field(
         default_factory=RfpRequiredInfoWithEvidence
     )
+
     missing: List[str] = field(default_factory=list)
 
     attempt: int = 0
@@ -258,7 +265,7 @@ def _resolve_evidences(
 # =========================================================
 # 4) Retrieve 노드들: 기본/타입우선/union 검색
 # =========================================================
-def make_retrieve_basic_node(retriever, k: Optional[int] = None):
+def make_retrieve_basic_node(retriever: VectorStoreRetriever, k: Optional[int] = None):
     def _retrieve(state: CRAGState) -> CRAGState:
         if k is not None:
             try:
@@ -269,7 +276,7 @@ def make_retrieve_basic_node(retriever, k: Optional[int] = None):
             except Exception:
                 pass
 
-        docs = retriever.get_relevant_documents(state.question)
+        docs = retriever.invoke(state.question)
         docs = _dedup_docs(docs)
         state.docs = docs
 
@@ -283,10 +290,11 @@ def make_retrieve_basic_node(retriever, k: Optional[int] = None):
     return _retrieve
 
 
-def make_retrieve_type_priority_union_node(retriever, *, k_by_type: Dict[str, int]):
+def make_retrieve_type_priority_union_node(
+    retriever: VectorStoreRetriever, *, k_by_type: Dict[str, int]
+):
     """
-    누락필드 기반으로 type 순서를 결정하고,
-    type별로 쿼리 2~3개씩 union 검색.
+    누락필드 기반으로 type 순서를 결정하고,type별로 쿼리 2~3개씩 union 검색.
     (현 retriever가 metadata filter를 지원하지 않는 경우가 많아서,
      여기서는 type별 '별도 검색'이 아니라 '검색 후 type으로 재정렬/상위 선별' 방식 + 필요 시 k 확대를 사용)
     """
@@ -303,7 +311,7 @@ def make_retrieve_type_priority_union_node(retriever, *, k_by_type: Dict[str, in
         # 2) corrective queries를 사용해 union 검색
         union_docs: List[Document] = []
         for q in state.corrective_queries:
-            docs = retriever.get_relevant_documents(q)
+            docs = retriever._get_relevant_documents(q)
             union_docs.extend(docs)
 
         union_docs = _dedup_docs(union_docs)
@@ -313,6 +321,7 @@ def make_retrieve_type_priority_union_node(retriever, *, k_by_type: Dict[str, in
         seen_keys: Set[Tuple[str, Any, Any, str]] = set()
 
         for typ in type_order:
+            # 해당 type 문서 후보군
             cand = [d for d in union_docs if (d.metadata or {}).get("type") == typ]
             limit = k_by_type.get(typ, 0)
             for d in cand[:limit]:
@@ -384,7 +393,10 @@ def make_extract_node(llm: BaseChatModel):
     structured_llm = llm.with_structured_output(RfpRequiredInfoWithEvidence)
 
     def _extract(state: CRAGState) -> CRAGState:
+
+        # 그래프에 저장된 청크 불러오기
         ctx = _format_docs(state.docs)
+        # 청크 + 질문으로 정보추출
         extracted: RfpRequiredInfoWithEvidence = structured_llm.invoke(
             prompt.format_messages(question=state.question, context=ctx)
         )
@@ -408,7 +420,10 @@ def make_extract_node(llm: BaseChatModel):
 # =========================================================
 def make_build_corrective_queries_node(llm: BaseChatModel, *, per_field: int = 2):
     """
-    누락 필드마다 검색용 질의를 2개 생성 -> 합쳐서 2~3개 정도로 압축(중복 제거)
+    누락 요소마다 검색용 질의를 2개 생성한 후 합쳐서 2~3개 정도로 압축(중복 제거)
+    Args:
+        llm: LLM 모델
+        per_field: int: 필드별 생성할 쿼리 수
     """
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -443,10 +458,9 @@ def make_build_corrective_queries_node(llm: BaseChatModel, *, per_field: int = 2
         if not missing:
             state.corrective_queries = []
             return state
-
         n = max(per_field, 2)
         msg = prompt.format_messages(
-            question=state.original_question,
+            question=state.question,
             missing_fields=", ".join([FIELD_LABELS_KO.get(f, f) for f in missing]),
             n=str(n),
         )
@@ -455,7 +469,6 @@ def make_build_corrective_queries_node(llm: BaseChatModel, *, per_field: int = 2
         # 안전 파싱(LLM이 JSON을 살짝 깨뜨릴 수 있으므로 최소 보정)
         queries: List[str] = []
         try:
-            import json
 
             queries = json.loads(raw)
             if not isinstance(queries, list):
@@ -468,7 +481,7 @@ def make_build_corrective_queries_node(llm: BaseChatModel, *, per_field: int = 2
             ]
 
         # 원질문도 포함(Recall 강화)
-        merged = [state.original_question] + [q for q in queries if q and q.strip()]
+        merged = [state.question] + [q for q in queries if q and q.strip()]
 
         # 중복 제거 + 너무 긴 쿼리 절단
         seen = set()
@@ -557,7 +570,7 @@ def make_answer_node(llm: BaseChatModel):
         ctx = _format_docs(state.docs)
 
         msg = prompt.format_messages(
-            question=state.original_question,
+            question=state.question,
             payload=str(payload.model_dump()),
             context=ctx,
         )
@@ -582,7 +595,7 @@ def make_answer_node(llm: BaseChatModel):
 # =========================================================
 def build_crag_graph(
     llm: BaseChatModel,
-    retriever,
+    retriever: VectorStoreRetriever,
     *,
     max_attempts: int = 2,
     k_first: int = 8,
@@ -598,11 +611,11 @@ def build_crag_graph(
     # nodes
     retrieve_first = make_retrieve_basic_node(retriever, k=k_first)
     extract = make_extract_node(llm)
-
-    build_queries = make_build_corrective_queries_node(llm, per_field=per_field_queries)
     retrieve_correct = make_retrieve_type_priority_union_node(
         retriever, k_by_type=k_by_type_corrective
     )
+    build_queries = make_build_corrective_queries_node(llm, per_field=per_field_queries)
+
     merge = make_merge_node(llm)
 
     def _inc_attempt(state: CRAGState) -> CRAGState:
@@ -620,25 +633,36 @@ def build_crag_graph(
     graph.add_node("answer", answer)
 
     # edges
+    # 그래프 시작점
     graph.set_entry_point("retrieve_first")
     graph.add_edge("retrieve_first", "extract")
 
+    # 조건부 엣지
     graph.add_conditional_edges(
-        "extract", route_should_correct, {"correct": "build_queries", "final": "answer"}
+        "extract",  # 시작 노드
+        route_should_correct,  # 라우팅 함수
+        {
+            "correct": "build_queries",
+            "final": "answer",
+        },  # 라우팅 함수 결과에 따른 다음 노드 매핑
     )
+    # corrective 루프
+    graph.add_edge(
+        "build_queries", "retrieve_correct"
+    )  # 누락 필드별 쿼리 생성 후 corrective 검색
+    graph.add_edge("retrieve_correct", "merge")  # corrective 검색 후 merge
+    graph.add_edge("merge", "inc_attempt")  # merge 후 시도 횟수 증가
+    graph.add_edge(
+        "inc_attempt", "extract"
+    )  # 시도 횟수 증가 후 다시 추출 -> 조건부 엣지로 복귀
 
-    graph.add_edge("build_queries", "retrieve_correct")
-    graph.add_edge("retrieve_correct", "merge")
-    graph.add_edge("merge", "inc_attempt")
-    graph.add_edge("inc_attempt", "extract")
-
+    # 누락 필드가 없거나 시도 횟수 초과 시 최종 답변
     graph.add_edge("answer", END)
 
     compiled = graph.compile()
 
     def run(question: str) -> Dict[str, Any]:
         init = CRAGState(
-            original_question=question,
             question=question,
             max_attempts=max_attempts,
         )
