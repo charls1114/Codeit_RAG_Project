@@ -51,3 +51,15 @@ PDF 제안요청서(RFP) 문서를 **텍스트/표/이미지(캡션)** 단위로
 
 
 ---
+## 최종 발표 자료(보고서)
+[📄 프로젝트 보고서 (PDF)](5팀 최종발표.pdf)
+
+## 개인 협업 일지
+
+이승철 - https://www.notion.so/2c5eaebccce68043bcf4e23d205eb5a6?v=2a0eaebccce6812f8d98000c7791451e&source=copy_link
+
+김동현 -
+
+이경식 -  
+
+최경운 - 
