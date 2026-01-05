@@ -60,6 +60,6 @@ PDF 제안요청서(RFP) 문서를 **텍스트/표/이미지(캡션)** 단위로
 
 김동현 -
 
-이경식 -  
+이경식 - https://www.notion.so/2c53a594a4d08039b8e5c8c73e82fac7?source=copy_link
 
 최경운 - 
